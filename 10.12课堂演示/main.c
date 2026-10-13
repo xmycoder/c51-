@@ -21,8 +21,10 @@ void Delay5000ms(void)	//@11.0592MHz
 
 
 void main(){
+	
+	
 	while(1){
-			P21 = 0;
+	P21 = 0;
 	Delay5000ms();
 	P21 = 1;
 	Delay5000ms();
