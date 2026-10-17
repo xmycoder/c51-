@@ -1,0 +1,95 @@
+{
+  "src": "C:\\Users\\41072\\Desktop\\硬件开发\\c51\\15-定时器中断\\定时器中断课堂讲解.html",
+  "url": "file:///C:/Users/41072/Desktop/%E7%A1%AC%E4%BB%B6%E5%BC%80%E5%8F%91/c51/15-%E5%AE%9A%E6%97%B6%E5%99%A8%E4%B8%AD%E6%96%AD/%E5%AE%9A%E6%97%B6%E5%99%A8%E4%B8%AD%E6%96%AD%E8%AF%BE%E5%A0%82%E8%AE%B2%E8%A7%A3.html",
+  "outdir": "C:\\Users\\41072\\Desktop\\硬件开发\\c51\\15-定时器中断\\_shots",
+  "include": [
+    "lint",
+    "screenshots",
+    "structure"
+  ],
+  "shots": {
+    "desktop": {
+      "slices": [
+        "C:\\Users\\41072\\Desktop\\硬件开发\\c51\\15-定时器中断\\_shots\\定时器中断课堂讲解_desktop_p1of2.jpg",
+        "C:\\Users\\41072\\Desktop\\硬件开发\\c51\\15-定时器中断\\_shots\\定时器中断课堂讲解_desktop_p2of2.jpg"
+      ],
+      "sliceHint": "按顺序 Read slices 里的各分片。",
+      "truncated": false,
+      "structure": {
+        "title": "定时器中断课堂讲解：TMOD 与初值（89C52）",
+        "firstH1": "定时器中断，到底在配什么？",
+        "viewport": {
+          "w": 1416,
+          "h": 761
+        },
+        "fullpage": {
+          "w": 1416,
+          "h": 6497
+        },
+        "counts": {
+          "section": 6,
+          "h1": 1,
+          "h2": 5,
+          "img": 0,
+          "canvas": 0,
+          "svg": 0,
+          "links": 5,
+          "buttons": 14
+        }
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "horizontalOverflow": [],
+      "resourceErrors": [],
+      "reportSource": "cdp"
+    }
+  },
+  "engine": "chrome_cli",
+  "chromiumExec": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "engineDegraded": true,
+  "engineDegradedReason": "playwright 未装",
+  "elapsedSec": 4.11,
+  "schemaVersion": 2,
+  "status": "pass",
+  "engineInfo": {
+    "name": "chrome_cli",
+    "degraded": true,
+    "degradedReasons": [
+      "playwright 未装"
+    ]
+  },
+  "input": {
+    "original": "C:\\Users\\41072\\Desktop\\硬件开发\\c51\\15-定时器中断\\定时器中断课堂讲解.html",
+    "resolvedPath": "C:\\Users\\41072\\Desktop\\硬件开发\\c51\\15-定时器中断\\定时器中断课堂讲解.html",
+    "baseUrl": "file:///C:/Users/41072/Desktop/%E7%A1%AC%E4%BB%B6%E5%BC%80%E5%8F%91/c51/15-%E5%AE%9A%E6%97%B6%E5%99%A8%E4%B8%AD%E6%96%AD/%E5%AE%9A%E6%97%B6%E5%99%A8%E4%B8%AD%E6%96%AD%E8%AF%BE%E5%A0%82%E8%AE%B2%E8%A7%A3.html",
+    "protocol": "file",
+    "cwd": "C:\\Users\\41072\\DoubaoWork\\chats\\2026-10-17\\new-chat",
+    "mediaMode": {
+      "reducedMotion": false
+    }
+  },
+  "artifacts": {
+    "screenshots": [
+      {
+        "viewport": "desktop",
+        "tiles": [
+          "C:\\Users\\41072\\Desktop\\硬件开发\\c51\\15-定时器中断\\_shots\\定时器中断课堂讲解_desktop_p1of2.jpg",
+          "C:\\Users\\41072\\Desktop\\硬件开发\\c51\\15-定时器中断\\_shots\\定时器中断课堂讲解_desktop_p2of2.jpg"
+        ],
+        "visualCoverage": {
+          "complete": true,
+          "reason": null
+        }
+      }
+    ]
+  },
+  "summary": {
+    "blocker": 0,
+    "error": 0,
+    "warning": 0,
+    "info": 0
+  },
+  "findings": [],
+  "prioritizedActions": [],
+  "reportPath": "C:\\Users\\41072\\Desktop\\硬件开发\\c51\\15-定时器中断\\_shots\\report.json"
+}

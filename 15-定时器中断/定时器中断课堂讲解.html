@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>定时器中断课堂讲解：TMOD 与初值（89C52）</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1.5' y='5' width='9.5' height='14' rx='2' fill='%232563eb'/%3E%3Crect x='13' y='5' width='9.5' height='14' rx='2' fill='%23dc2626'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --ink:#0f172a; --sub:#475569; --muted:#64748b;
+    --bg:#eef2f7; --card:#ffffff; --line:#dde3ec;
+    --blue:#1d4ed8; --blue-bg:#dbeafe; --blue-line:#bfdbfe;
+    --red:#dc2626; --red-bg:#fee2e2; --red-line:#fecaca;
+    --amber:#b45309; --amber-bg:#fef3c7; --amber-line:#fde68a;
+    --green:#047857; --green-bg:#d1fae5; --green-line:#a7f3d0;
+    --code-bg:#0f172a; --code-ink:#e2e8f0; --code-dim:#94a3b8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.65;
+    font-size:16px;
+  }
+  /* ===== 顶部导航 ===== */
+  .topnav{
+    position:sticky; top:0; z-index:50;
+    background:rgba(15,23,42,.96); color:#e2e8f0;
+    padding:10px 16px;
+    display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center;
+    box-shadow:0 1px 8px rgba(15,23,42,.25);
+  }
+  .topnav .brand{font-weight:700;font-size:15px;margin-right:auto;color:#fff;}
+  .topnav a{color:#cbd5e1;text-decoration:none;font-size:14px;padding:6px 2px;}
+  .topnav a:hover{color:#fff;}
+  .wrap{max-width:1080px;margin:0 auto;padding:20px 16px 60px;}
+  section{margin-top:38px;}
+  h2{
+    font-size:26px;font-weight:800;color:var(--ink);
+    display:flex;align-items:center;gap:10px;margin-bottom:6px;
+  }
+  h2 .step-badge{
+    flex:none;width:40px;height:40px;border-radius:12px;
+    background:var(--blue);color:#fff;font-size:20px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .lead{color:var(--sub);font-size:16px;margin-bottom:16px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:14px;}
+  .card h3{font-size:18px;margin-bottom:10px;}
+  .grid2{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;}
+  code,pre{font-family:Consolas,"Courier New",monospace;}
+  pre.code{
+    background:var(--code-bg);color:var(--code-ink);
+    border-radius:10px;padding:14px 16px;overflow-x:auto;
+    font-size:15px;line-height:1.7;max-width:100%;
+  }
+  pre.code .c{color:var(--code-dim);}
+  pre.code .k{color:#93c5fd;font-weight:700;}
+  pre.code .v{color:#fca5a5;}
+  pre.code .n{color:#fde68a;}
+  .inline-code{background:#e8edf5;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:.92em;color:#1e3a8a;}
+  table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:8px;font-size:15px;}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;word-break:break-word;}
+  th{background:#f1f5f9;font-weight:700;}
+  .note{border-radius:10px;padding:12px 14px;font-size:15px;margin-top:12px;}
+  .note.warn{background:var(--amber-bg);border:1px solid var(--amber-line);color:#78350f;}
+  .note.good{background:var(--green-bg);border:1px solid var(--green-line);color:#064e3b;}
+  .btn{
+    font-family:inherit;font-size:15px;font-weight:700;
+    border:1px solid var(--blue-line);background:var(--blue-bg);color:var(--blue);
+    border-radius:9px;padding:10px 14px;min-height:44px;cursor:pointer;
+    transition:background .15s,transform .05s;
+  }
+  .btn:hover{background:#bfdbfe;}
+  .btn:active{transform:scale(.97);}
+  .btn.on{background:var(--blue);color:#fff;}
+  .btn.ghost{background:#fff;color:var(--sub);border-color:var(--line);}
+  .btn.ghost:hover{background:#f1f5f9;}
+  .btn:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #93c5fd;outline-offset:2px;}
+  .chip{display:inline-block;background:#e8edf5;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:13px;color:var(--sub);}
+  @media (min-width:768px){
+    .grid2{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+  }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand">定时器中断 · 课堂讲解</span>
+  <a href="#overview">六步总览</a>
+  <a href="#step3">第3步 TMOD</a>
+  <a href="#step4">第4步 装初值</a>
+  <a href="#table">速查表</a>
+  <a href="#pits">避坑</a>
+</nav>
+
+<div class="wrap">
+
+  <!-- ===== Hero：计数器动画 ===== -->
+  <section id="hero" style="margin-top:6px;">
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#e2e8f0;padding:26px 22px 18px;">
+        <div style="font-size:14px;letter-spacing:2px;color:#93c5fd;font-weight:700;">89C52 · 定时器0 · 12MHz · 模式1</div>
+        <h1 style="font-size:30px;line-height:1.3;margin:8px 0 6px;color:#fff;">定时器中断，到底在配什么？</h1>
+        <p style="font-size:16px;color:#cbd5e1;">第3步选工作模式（TMOD）决定计数器是几位；第4步装初值（TH0/TL0）决定定时多长。先看下面这个 16 位计数器从初值数到溢出、触发中断的完整过程。</p>
+      </div>
+
+      <div class="demo-panel" style="padding:20px 18px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+          <span style="font-weight:800;font-size:17px;">16 位计数器演示</span>
+          <span class="chip" id="initLabel">初值 64614（0xFC66）</span>
+          <span class="chip" id="timeLabel">定时 922μs</span>
+        </div>
+
+        <div class="regs" style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px;">
+          <div class="reg" style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-weight:700;color:var(--red);font-size:14px;">TH0（高8位）</span>
+              <span class="mono" id="th0Hex" style="font-family:Consolas,monospace;font-weight:700;">0xFC</span>
+            </div>
+            <div class="bits" id="th0Bits" style="display:grid;grid-template-columns:repeat(8,1fr);gap:3px;"></div>
+          </div>
+          <div class="reg" style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-weight:700;color:var(--blue);font-size:14px;">TL0（低8位）</span>
+              <span class="mono" id="tl0Hex" style="font-family:Consolas,monospace;font-weight:700;">0x66</span>
+            </div>
+            <div class="bits" id="tl0Bits" style="display:grid;grid-template-columns:repeat(8,1fr);gap:3px;"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;font-family:Consolas,monospace;font-size:16px;font-weight:700;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;">
+          <span id="decVal" style="color:var(--ink);">64614</span>
+          <span id="decMax" style="color:var(--muted);">65536 溢出</span>
+        </div>
+        <div style="height:10px;background:#e2e8f0;border-radius:5px;margin-top:6px;overflow:hidden;">
+          <div id="bar" style="width:0%;height:100%;background:linear-gradient(90deg,#2563eb,#7dd3fc);border-radius:5px;"></div>
+        </div>
+
+        <div class="flow" style="display:flex;align-items:center;gap:6px;margin-top:14px;flex-wrap:wrap;font-size:14px;">
+          <span class="fnode" id="f0" style="padding:6px 10px;border-radius:8px;background:#f1f5f9;border:1px solid var(--line);">计数中</span>
+          <span class="farr" style="color:var(--muted);">→</span>
+          <span class="fnode" id="f1" style="padding:6px 10px;border-radius:8px;background:#f1f5f9;border:1px solid var(--line);">TF0=1 溢出</span>
+          <span class="farr" style="color:var(--muted);">→</span>
+          <span class="fnode" id="f2" style="padding:6px 10px;border-radius:8px;background:#f1f5f9;border:1px solid var(--line);">进中断</span>
+          <span class="farr" style="color:var(--muted);">→</span>
+          <span class="fnode" id="f3" style="padding:6px 10px;border-radius:8px;background:#f1f5f9;border:1px solid var(--line);">重装初值</span>
+          <span style="display:flex;align-items:center;gap:8px;margin-left:auto;font-family:Consolas,monospace;color:var(--muted);">
+            <span id="ledDot" style="width:14px;height:14px;border-radius:50%;background:#cbd5e1;border:2px solid #94a3b8;display:inline-block;"></span>
+            <span id="countTxt">count 0/5000 · P20</span>
+          </span>
+        </div>
+
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:12px;">
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--sub);margin-bottom:4px;">
+              <span>拖动初值，看定时时长怎么变</span>
+              <span id="initShow" style="font-family:Consolas,monospace;">64614</span>
+            </div>
+            <input type="range" id="initRange" min="60000" max="65535" value="64614" step="1" style="width:100%;">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn" id="playBtn" style="min-width:76px;">暂停</button>
+            <button class="btn ghost" id="replayBtn">重放</button>
+            <span style="font-size:14px;color:var(--sub);">速度</span>
+            <button class="btn ghost spd" data-s="1" style="padding:8px 12px;min-height:40px;">1×</button>
+            <button class="btn ghost spd on" data-s="4" style="padding:8px 12px;min-height:40px;">4×</button>
+            <button class="btn ghost spd" data-s="16" style="padding:8px 12px;min-height:40px;">16×</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 六步总览 ===== -->
+  <section id="overview">
+    <h2>六步总览</h2>
+    <p class="lead">前 5 步写在初始化函数里、main 开头调用一次；第 6 步是中断服务函数，时间一到硬件自动跳进去，不用你调。</p>
+    <div class="steps" style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:12px;">
+      <div class="ov" style="display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;">
+        <span style="flex:none;width:30px;height:30px;border-radius:50%;background:var(--blue);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;">1</span>
+        <div><div style="font-weight:700;">打开中断总开关 <code class="inline-code">EA = 1;</code></div><div style="font-size:14px;color:var(--sub);">所有中断的总闸门，不开它，后面全白配。</div></div>
+      </div>
+      <div class="ov" style="display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;">
+        <span style="flex:none;width:30px;height:30px;border-radius:50%;background:var(--blue);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;">2</span>
+        <div><div style="font-weight:700;">允许定时器0中断 <code class="inline-code">ET0 = 1;</code></div><div style="font-size:14px;color:var(--sub);">EA 只管总闸，每个中断源还要单独开自己的门。</div></div>
+      </div>
+      <div class="ov" style="display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-color:var(--blue-line);">
+        <span style="flex:none;width:30px;height:30px;border-radius:50%;background:var(--blue);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;">3</span>
+        <div><div style="font-weight:700;">选工作模式 <code class="inline-code">TMOD &amp;= 0xF0; TMOD |= 0x01;</code></div><div style="font-size:14px;color:var(--sub);">低4位管定时器0，设成模式1（16位）。本页重点详解 ↓</div></div>
+      </div>
+      <div class="ov" style="display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-color:var(--blue-line);">
+        <span style="flex:none;width:30px;height:30px;border-radius:50%;background:var(--blue);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;">4</span>
+        <div><div style="font-weight:700;">装初值 <code class="inline-code">TL0 = 64614; TH0 = 64614 &gt;&gt; 8;</code></div><div style="font-size:14px;color:var(--sub);">初值决定定时多长。本页重点详解 ↓</div></div>
+      </div>
+      <div class="ov" style="display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;">
+        <span style="flex:none;width:30px;height:30px;border-radius:50%;background:var(--blue);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;">5</span>
+        <div><div style="font-weight:700;">启动定时器 <code class="inline-code">TR0 = 1;</code></div><div style="font-size:14px;color:var(--sub);">开始数机器周期，数满就溢出。</div></div>
+      </div>
+      <div class="ov" style="display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;">
+        <span style="flex:none;width:30px;height:30px;border-radius:50%;background:var(--green);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;">6</span>
+        <div><div style="font-weight:700;">写中断服务函数 <code class="inline-code">void 名字() interrupt 1 { ... }</code></div><div style="font-size:14px;color:var(--sub);">每定时时长自动进来一次：重装初值 + 业务代码。</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第3步 TMOD ===== -->
+  <section id="step3">
+    <h2><span class="step-badge">3</span>选工作模式：TMOD 在配什么</h2>
+    <p class="lead">TMOD 是 1 个 8 位寄存器：<b>高 4 位管定时器1，低 4 位管定时器0</b>。我们只用 T0，所以只动低 4 位。</p>
+
+    <div class="card">
+      <h3>TMOD 位结构（当前 = 0x01）</h3>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:6px;">
+        <div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">← 高4位：定时器1（本工程不动它）</div>
+          <div class="tmod-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;" id="t1row"></div>
+        </div>
+        <div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">低4位：定时器0（本工程在配它）→</div>
+          <div class="tmod-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;" id="t0row"></div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:15px;">
+        <span style="font-weight:700;">TMOD = </span>
+        <span class="mono" id="tmodBin" style="font-family:Consolas,monospace;font-weight:700;color:var(--blue);">0000 0001</span>
+        <span class="chip" style="margin-left:8px;" id="tmodHex">0x01</span>
+        <span class="chip" id="modeName">模式1：16位定时器</span>
+      </div>
+      <div class="note good" id="modeExplain">
+        当前 M1M0 = 01 → <b>模式1（16位）</b>：TH0 和 TL0 拼成一个 16 位计数器，从初值数到 65536 溢出，单次最长 65.536ms，是最常用的模式。
+      </div>
+
+      <h3 style="margin-top:18px;">点按钮切换模式，看 M1M0 变化</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+        <button class="btn ghost mode-btn" data-m="0">模式0 · 13位</button>
+        <button class="btn mode-btn on" data-m="1">模式1 · 16位</button>
+        <button class="btn ghost mode-btn" data-m="2">模式2 · 8位自动重装</button>
+        <button class="btn ghost mode-btn" data-m="3">模式3 · 拆分</button>
+      </div>
+      <table style="margin-top:14px;">
+        <colgroup><col style="width:18%"><col style="width:16%"><col style="width:16%"><col style="width:24%"><col style="width:26%"></colgroup>
+        <tr><th>模式</th><th>M1 M0</th><th>计数器位数</th><th>单次最长定时（12MHz）</th><th>特点</th></tr>
+        <tr><td>0</td><td>00</td><td>13 位</td><td>8.192ms</td><td>老古董，兼容旧设计</td></tr>
+        <tr><td><b>1</b></td><td><b>01</b></td><td><b>16 位</b></td><td><b>65.536ms</b></td><td><b>最常用：范围大、好算</b></td></tr>
+        <tr><td>2</td><td>10</td><td>8 位</td><td>256μs</td><td>硬件自动重装初值，误差小，适合精确短定时</td></tr>
+        <tr><td>3</td><td>11</td><td>拆成两个 8 位</td><td>—</td><td>把 T0 拆成两个独立定时器，少见</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>这两行代码到底在干什么</h3>
+      <p style="font-size:15px;color:var(--sub);margin-bottom:10px;">用「位掩码」思想：<b>&amp;= 清位</b>（把要改的位清零）、<b>|= 置位</b>（把需要的位写成 1），同时不碰其他位。</p>
+      <pre class="code"><span class="c">// 初始：复位后 TMOD = 0x00，即 0000 0000</span>
+<span class="k">TMOD</span> &amp;= <span class="n">0xF0</span>;   <span class="c">// ① 与 1111 0000 相与 → 低4位清零，高4位原样保留</span>
+<span class="k">TMOD</span> |= <span class="n">0x01</span>;   <span class="c">// ② 或 0000 0001 → M0 置1，低4位变成 0001</span></pre>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:12px;">
+        <div style="background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
+          <div style="font-weight:700;font-size:15px;">① <code class="inline-code">TMOD &amp;= 0xF0;</code> —— 清掉低4位</div>
+          <pre class="code" style="margin-top:8px;">  TMOD  0000 0000   <span class="c">（假设原来是 0x00）</span>
+&amp; 0xF0  1111 0000
+──────────────
+=        0000 0000   <span class="c">→ 低4位全变 0，高4位不动</span></pre>
+          <div style="font-size:14px;color:var(--sub);">为什么不直接 <code class="inline-code">TMOD = 0x01</code>？如果之前配过定时器1（高4位有值），直接赋值会把它冲掉；<code class="inline-code">&amp;=</code> 只改低4位、保住高4位。</div>
+        </div>
+        <div style="background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
+          <div style="font-weight:700;font-size:15px;">② <code class="inline-code">TMOD |= 0x01;</code> —— M0 置 1</div>
+          <pre class="code" style="margin-top:8px;">  TMOD  0000 0000
+| 0x01  0000 0001
+──────────────
+=        0000 0001   <span class="c">→ M1M0 = 01 → 模式1（16位）</span></pre>
+        </div>
+      </div>
+      <div class="note good" style="margin-top:12px;">
+        <b>等价写法：</b><code class="inline-code">TMOD = (TMOD &amp; 0xF0) | 0x01;</code>（一步完成，意思完全一样）。如果保证不用定时器1，也可以直接 <code class="inline-code">TMOD = 0x01;</code>。
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第4步 装初值 ===== -->
+  <section id="step4">
+    <h2><span class="step-badge">4</span>装初值：TH0 / TL0 决定定时多长</h2>
+    <p class="lead">16 位计数器从<b>初值</b>开始，每个机器周期 +1，数到 <b>65536</b> 就溢出、触发中断。所以：<b>初值 = 65536 − 想数的机器周期数</b>。初值越大，离溢出越近，定时越短。</p>
+
+    <div class="card">
+      <h3>64614 拆开看：一个数，三种写法</h3>
+      <pre class="code"><span class="c">十进制    64614</span>
+<span class="c">十六进制  0xFC66</span>
+二进制    1111 1100 0110 0110
+         └──TH0──┘ └─TL0─┘
+         <span class="v">高8位</span>     <span class="n">低8位</span></pre>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:10px;">
+        <div style="border:1px solid var(--red-line);background:var(--red-bg);border-radius:10px;padding:10px 14px;">
+          <b style="color:var(--red);">TH0 = 1111 1100 = 0xFC = 252</b><br>
+          <span style="font-size:14px;color:var(--sub);">对应 64614 的二进制高 8 位（前 8 个 bit）</span>
+        </div>
+        <div style="border:1px solid var(--blue-line);background:var(--blue-bg);border-radius:10px;padding:10px 14px;">
+          <b style="color:var(--blue);">TL0 = 0110 0110 = 0x66 = 102</b><br>
+          <span style="font-size:14px;color:var(--sub);">对应 64614 的二进制低 8 位（后 8 个 bit）</span>
+        </div>
+      </div>
+      <div class="note good" style="margin-top:12px;">
+        <b>验证：</b>252 × 256 + 102 = 64512 + 102 = <b>64614</b>，成立。<br>
+        口诀：<b>TH0 × 256 + TL0</b> 把两个 8 位拼回原来的 16 位数。
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>为什么代码要写两行，而不是一行</h3>
+      <p style="font-size:15px;color:var(--sub);margin-bottom:10px;">TH0 和 TL0 都是 <b>8 位</b>寄存器，一次只能装 8 位（0~255）。64614 是 16 位数，必须拆成两半分别装。</p>
+      <pre class="code"><span class="k">TL0</span> = <span class="n">64614</span>;          <span class="c">// TL0 只有 8 位：编译器自动只取低 8 位 → 0x66</span>
+<span class="k">TH0</span> = <span class="n">64614</span> <span class="k">&gt;&gt;</span> <span class="n">8</span>;      <span class="c">// 右移 8 位：把高 8 位挪到低 8 位 → 0xFC</span></pre>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:12px;">
+        <div style="background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
+          <div style="font-weight:700;font-size:15px;"><code class="inline-code">&gt;&gt; 8</code> 右移示意</div>
+          <pre class="code" style="margin-top:8px;">64614      = 0xFC66 = 1111 1100 0110 0110
+64614 &gt;&gt; 8 = 0x00FC = 0000 0000 1111 1100
+                          └─ 原来的高8位跑到了这里，低8位被丢
+所以 TH0 = 0xFC</pre>
+        </div>
+        <div style="background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
+          <div style="font-weight:700;font-size:15px;">TL0 自动截断</div>
+          <pre class="code" style="margin-top:8px;">TL0 = 64614;   <span class="c">// TL0 是 8 位寄存器（unsigned char）</span>
+              <span class="c">// 64614 = 0xFC66，编译器自动丢掉高 8 位</span>
+              <span class="c">// TL0 = 0x66</span></pre>
+        </div>
+      </div>
+      <div class="note good" style="margin-top:12px;">
+        <b>两种写法等价：</b><code class="inline-code">TL0 = 64614; TH0 = 64614 &gt;&gt; 8;</code> 和 <code class="inline-code">TL0 = 0x66; TH0 = 0xFC;</code> 效果一样。初学者建议先算好十六进制，再用 <code class="inline-code">&gt;&gt; 8</code> 写，不容易错。
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>定时时长反推（12MHz）</h3>
+      <pre class="code"><span class="c">// 89C52 是 12T 单片机：机器周期 = 12 ÷ 晶振频率 = 12 ÷ 12MHz = 1μs</span>
+<span class="c">// 模式1：一次溢出定时 = (65536 − 初值) × 机器周期</span>
+定时时间 = (65536 − 64614) × 1μs = <span class="v">922μs ≈ 0.922ms</span>
+
+<span class="c">// 本工程现象：</span>
+<span class="c">// 每 0.922ms 进一次中断，count 数到 5000 才翻转 LED</span>
+翻转间隔 ≈ 0.922ms × 5000 ≈ <span class="v">4.6 秒</span></pre>
+    </div>
+
+    <div class="card" id="calc">
+      <h3>初值计算器（12MHz · 模式1）</h3>
+      <p style="font-size:14px;color:var(--sub);">输入想要的定时，自动算出初值、TH0、TL0 —— 上课现场演示神器。</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:10px;">
+        <label style="font-size:15px;display:flex;align-items:center;gap:6px;">毫秒
+          <input id="calcMs" type="number" min="0" step="0.001" value="1" style="width:110px;padding:10px 8px;font-size:16px;border:1px solid var(--line);border-radius:8px;">
+        </label>
+        <span style="color:var(--muted);">=</span>
+        <label style="font-size:15px;display:flex;align-items:center;gap:6px;">微秒
+          <input id="calcUs" type="number" min="1" max="65535" step="1" value="1000" style="width:110px;padding:10px 8px;font-size:16px;border:1px solid var(--line);border-radius:8px;">
+        </label>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+        <button class="btn ghost preset" data-us="922">0.922ms（本工程）</button>
+        <button class="btn ghost preset" data-us="1000">1ms</button>
+        <button class="btn ghost preset" data-us="5000">5ms</button>
+        <button class="btn ghost preset" data-us="10000">10ms</button>
+        <button class="btn ghost preset" data-us="50000">50ms</button>
+      </div>
+      <div id="calcErr" style="color:var(--red);font-size:14px;margin-top:8px;min-height:20px;"></div>
+      <div id="calcOut" style="margin-top:8px;"></div>
+    </div>
+  </section>
+
+  <!-- ===== 速查表 ===== -->
+  <section id="table">
+    <h2>速查表</h2>
+    <div class="card">
+      <h3>12MHz · 模式1 常用初值</h3>
+      <table>
+        <colgroup><col style="width:22%"><col style="width:22%"><col style="width:22%"><col style="width:17%"><col style="width:17%"></colgroup>
+        <tr><th>想要定时</th><th>初值（十进制）</th><th>初值（十六进制）</th><th>TH0</th><th>TL0</th></tr>
+        <tr><td>0.922ms（本工程）</td><td>64614</td><td>0xFC66</td><td>0xFC</td><td>0x66</td></tr>
+        <tr><td>1ms</td><td>64536</td><td>0xFC18</td><td>0xFC</td><td>0x18</td></tr>
+        <tr><td>5ms</td><td>60536</td><td>0xEC78</td><td>0xEC</td><td>0x78</td></tr>
+        <tr><td>10ms</td><td>55536</td><td>0xD8F0</td><td>0xD8</td><td>0xF0</td></tr>
+        <tr><td>50ms</td><td>15536</td><td>0x3CB0</td><td>0x3C</td><td>0xB0</td></tr>
+      </table>
+      <div class="note warn" style="margin-top:10px;">
+        超过 65.536ms 模式1 一次装不下：要么换模式2 + 计数，要么像本工程用 <code class="inline-code">count</code> 累加次数。
+      </div>
+    </div>
+    <div class="card">
+      <h3>中断号对照（interrupt n）</h3>
+      <table>
+        <colgroup><col style="width:25%"><col style="width:45%"><col style="width:30%"></colgroup>
+        <tr><th>编号</th><th>中断源</th><th>入口（引脚）</th></tr>
+        <tr><td>0</td><td>外部中断0（INT0）</td><td>P3.2</td></tr>
+        <tr><td><b>1</b></td><td><b>定时器0</b></td><td>—</td></tr>
+        <tr><td>2</td><td>外部中断1（INT1）</td><td>P3.3</td></tr>
+        <tr><td>3</td><td>定时器1</td><td>—</td></tr>
+        <tr><td>4</td><td>串口</td><td>—</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>三个关键寄存器</h3>
+      <table>
+        <colgroup><col style="width:20%"><col style="width:80%"></colgroup>
+        <tr><th>寄存器</th><th>关键位</th></tr>
+        <tr><td>IE（中断允许）</td><td>EA 总开关(bit7)、ET0 定时器0允许(bit1)、EX0 外部0(bit0)、ET1(bit3)、EX1(bit2)、ES 串口(bit4)</td></tr>
+        <tr><td>TMOD（工作模式）</td><td>低4位管T0：GATE(bit3)、C/T(bit2)、M1M0(bit1:0)；高4位管T1，同理</td></tr>
+        <tr><td>TCON</td><td>TF0 溢出标志(bit5)、TR0 启动定时器0(bit4)、TF1(bit7)、TR1(bit6)</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== 避坑 ===== -->
+  <section id="pits">
+    <h2>上课常踩的坑</h2>
+    <div class="grid2" style="margin-top:12px;">
+      <div class="note warn" style="margin:0;">
+        <b>① 模式1 必须软件重装初值</b><br>
+        中断函数里要再写一次 <code class="inline-code">TH0 / TL0</code>，否则下一次定时时长错乱。模式2 才由硬件自动重装。
+      </div>
+      <div class="note warn" style="margin:0;">
+        <b>② 不要手动调用 interrupt 函数</b><br>
+        中断函数由硬件自动调用。本工程 <code class="inline-code">main()</code> 的 <code class="inline-code">while(1)</code> 里调了 <code class="inline-code">Dir_Timer0_Handler()</code>，会让翻转明显变快；改成 <code class="inline-code">while(1);</code> 空循环即可。
+      </div>
+      <div class="note warn" style="margin:0;">
+        <b>③ 计数变量用 static 或全局</b><br>
+        函数里的普通局部变量每次进入都会重新初始化，<code class="inline-code">count</code> 永远数不到 5000。
+      </div>
+      <div class="note warn" style="margin:0;">
+        <b>④ 中断服务函数要短</b><br>
+        别在里面做长延时或复杂计算，否则会拖慢主程序，实时性变差。
+      </div>
+      <div class="note warn" style="margin:0;">
+        <b>⑤ 先算再写，别凭感觉填初值</b><br>
+        初值差 1，定时就差 1μs；要定时 1ms 就写 64536，不要写成 64614 还当 1ms。
+      </div>
+      <div class="note good" style="margin:0;">
+        <b>记忆锚点（12MHz）</b><br>
+        机器周期 1μs → 模式1 初值 = 65536 − 微秒数 → 除以 256 得 TH0，余数得 TL0。
+      </div>
+    </div>
+  </section>
+
+</div>
+<script>
+(function(){
+  'use strict';
+
+  /* ============ TMOD 位图 ============ */
+  var RED='#dc2626', BLUE='#1d4ed8';
+  var t1Meta=[{b:7,n:'GATE'},{b:6,n:'C/T'},{b:5,n:'M1'},{b:4,n:'M0'}];
+  var t0Meta=[{b:3,n:'GATE'},{b:2,n:'C/T'},{b:1,n:'M1'},{b:0,n:'M0'}];
+  var modeInfo={
+    0:{m:[0,0],name:'模式0 · 13位',expl:'13 位计数器（TL0 低5位 + TH0 高8位），从初值数到 8192 溢出，单次最长 8.192ms，早期型号兼容用。'},
+    1:{m:[0,1],name:'模式1 · 16位',expl:'TH0 和 TL0 拼成一个 16 位计数器，从初值数到 65536 溢出，单次最长 65.536ms，最常用。'},
+    2:{m:[1,0],name:'模式2 · 8位自动重装',expl:'8 位计数器，溢出时硬件自动把初值装回 TH0，不用软件重装、误差最小，适合精确短定时（最长 256μs）。'},
+    3:{m:[1,1],name:'模式3 · 拆分',expl:'T0 拆成 TL0、TH0 两个独立 8 位定时器，特殊用途，很少用。'}
+  };
+  var curMode=1;
+
+  function bitCell(val,name,bit,color){
+    var on=val===1;
+    return '<div style="text-align:center;border:1px solid '+(on?color:'var(--line)')+';border-radius:6px;padding:4px 2px;background:'+(on?color+'26':'#f8fafc')+';min-height:48px;">'
+      +'<div style="font-size:16px;font-weight:800;color:'+(on?color:'#94a3b8')+';">'+val+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);line-height:1.2;">'+name+'</div>'
+      +'<div style="font-size:10px;color:#94a3b8;">bit'+bit+'</div></div>';
+  }
+
+  function renderTMOD(){
+    var t1='';
+    for(var i=0;i<4;i++){ t1+=bitCell(0,t1Meta[i].n,t1Meta[i].b,'#94a3b8'); }
+    var bits=[0,0,modeInfo[curMode].m[0],modeInfo[curMode].m[1]];
+    var cols=['#94a3b8','#94a3b8',BLUE,BLUE];
+    var t0='';
+    for(var j=0;j<4;j++){ t0+=bitCell(bits[j],t0Meta[j].n,t0Meta[j].b,cols[j]); }
+    document.getElementById('t1row').innerHTML=t1;
+    document.getElementById('t0row').innerHTML=t0;
+    var bin='0000 '+bits[0]+bits[1]+bits[2]+bits[3];
+    document.getElementById('tmodBin').textContent=bin;
+    var hexVal=(bits[2]<<1)|bits[3];
+    document.getElementById('tmodHex').textContent='0x0'+hexVal;
+    document.getElementById('modeName').textContent=modeInfo[curMode].name;
+    document.getElementById('modeExplain').innerHTML='当前 M1M0 = '+bits[2]+bits[3]+' → <b>'+modeInfo[curMode].name.replace(' · ','</b>（')+'）</b>：'+modeInfo[curMode].expl;
+  }
+  renderTMOD();
+
+  var modeBtns=document.querySelectorAll('.mode-btn');
+  for(var mi=0;mi<modeBtns.length;mi++){
+    modeBtns[mi].addEventListener('click',function(){
+      curMode=parseInt(this.getAttribute('data-m'),10);
+      for(var k=0;k<modeBtns.length;k++){ modeBtns[k].classList.remove('on'); }
+      this.classList.add('on');
+      renderTMOD();
+    });
+  }
+
+  /* ============ Hero：16位计数器动画 ============ */
+  var initVal=64614, cur=64614, speed=4, playing=true, overflow=false, cnt=0, led=false;
+  var th0Bits=document.getElementById('th0Bits'), tl0Bits=document.getElementById('tl0Bits');
+  var playBtn=document.getElementById('playBtn'), replayBtn=document.getElementById('replayBtn');
+  var range=document.getElementById('initRange');
+
+  function hex8(v){ var h=(v&0xff).toString(16).toUpperCase(); return h.length<2?'0'+h:h; }
+  function hex16(v){ var h=v.toString(16).toUpperCase(); while(h.length<4){h='0'+h;} return h; }
+  function bitsHTML(v,color){
+    var s='';
+    for(var i=7;i>=0;i--){
+      var on=(v>>i)&1;
+      s+='<span style="display:block;text-align:center;font-size:12px;font-weight:800;color:'+(on?color:'#cbd5e1')+';background:'+(on?color+'2e':'#f1f5f9')+';border:1px solid '+(on?color:'var(--line)')+';border-radius:4px;padding:5px 0;">'+on+'</span>';
+    }
+    return s;
+  }
+  function renderRegs(){
+    th0Bits.innerHTML=bitsHTML(cur>>8,RED);
+    tl0Bits.innerHTML=bitsHTML(cur&0xff,BLUE);
+    document.getElementById('th0Hex').textContent='0x'+hex8(cur>>8);
+    document.getElementById('tl0Hex').textContent='0x'+hex8(cur&0xff);
+    document.getElementById('decVal').textContent=cur;
+    var pct=(cur-initVal)/(65536-initVal)*100;
+    if(pct>100){pct=100;}
+    document.getElementById('bar').style.width=pct.toFixed(1)+'%';
+  }
+
+  var flowStyles=[
+    ['#dbeafe','#1d4ed8'],['#fef3c7','#b45309'],['#d1fae5','#047857'],['#dbeafe','#1d4ed8']
+  ];
+  function setFlow(idx){
+    for(var i=0;i<4;i++){
+      var el=document.getElementById('f'+i);
+      el.style.background='#f1f5f9';
+      el.style.borderColor='var(--line)';
+      el.style.color='var(--ink)';
+    }
+    if(idx>=0&&idx<4){
+      var el2=document.getElementById('f'+idx);
+      el2.style.background=flowStyles[idx][0];
+      el2.style.borderColor=flowStyles[idx][1];
+      el2.style.color=flowStyles[idx][1];
+      el2.style.fontWeight='700';
+    }
+  }
+  function updateLed(){
+    var dot=document.getElementById('ledDot');
+    if(led){ dot.style.background='#f59e0b'; dot.style.boxShadow='0 0 8px #f59e0b'; }
+    else{ dot.style.background='#cbd5e1'; dot.style.boxShadow='none'; }
+  }
+  function updateCountLabel(){
+    document.getElementById('countTxt').textContent='count '+cnt+'/5000 · P20';
+  }
+
+  var overflowTimer=null;
+  function overflowNow(){
+    overflow=true;
+    setFlow(1);
+    overflowTimer=setTimeout(function(){ setFlow(2); },420);
+    overflowTimer=setTimeout(function(){
+      cnt++;
+      if(cnt>=5000){ led=!led; cnt=0; updateLed(); }
+      updateCountLabel();
+      setFlow(3);
+    },860);
+    overflowTimer=setTimeout(function(){
+      cur=initVal; overflow=false; setFlow(0); renderRegs();
+    },1350);
+  }
+
+  function tick(){
+    if(!overflow&&playing){
+      cur+=speed*4;
+      if(cur>=65536){ cur=65536; renderRegs(); overflowNow(); }
+      else{ renderRegs(); }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  playBtn.addEventListener('click',function(){
+    playing=!playing;
+    playBtn.textContent=playing?'暂停':'继续';
+  });
+  replayBtn.addEventListener('click',function(){
+    clearTimeout(overflowTimer);
+    cur=initVal; overflow=false; cnt=0; led=false;
+    setFlow(0); updateLed(); updateCountLabel(); renderRegs();
+  });
+  range.addEventListener('input',function(){
+    initVal=parseInt(this.value,10);
+    cur=initVal;
+    clearTimeout(overflowTimer);
+    overflow=false; cnt=0; led=false;
+    document.getElementById('initLabel').textContent='初值 '+initVal+'（0x'+hex16(initVal)+'）';
+    var us=65536-initVal;
+    document.getElementById('timeLabel').textContent='定时 '+us+'μs';
+    document.getElementById('initShow').textContent=initVal;
+    setFlow(0); updateLed(); updateCountLabel(); renderRegs();
+  });
+  var spdBtns=document.querySelectorAll('.spd');
+  for(var si=0;si<spdBtns.length;si++){
+    spdBtns[si].addEventListener('click',function(){
+      speed=parseInt(this.getAttribute('data-s'),10);
+      for(var q=0;q<spdBtns.length;q++){ spdBtns[q].classList.remove('on'); }
+      this.classList.add('on');
+    });
+  }
+
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    playing=false; playBtn.textContent='继续';
+  }
+  setFlow(0); updateLed(); updateCountLabel(); renderRegs();
+  requestAnimationFrame(tick);
+
+  /* ============ 初值计算器 ============ */
+  var calcMs=document.getElementById('calcMs'), calcUs=document.getElementById('calcUs');
+  var calcOut=document.getElementById('calcOut'), calcErr=document.getElementById('calcErr');
+
+  function calcResult(){
+    var us=Math.round(parseFloat(calcUs.value));
+    if(!isFinite(us)||us<1){ calcErr.textContent='请输入 ≥ 1μs 的目标定时。'; calcOut.innerHTML=''; return; }
+    if(us>65535){
+      calcErr.textContent='超过模式1上限 65.536ms：一次装不下，改用计数累加（中断里 count 到 N 再动作）。';
+      calcOut.innerHTML=''; return;
+    }
+    calcErr.textContent='';
+    var init=65536-us, th=init>>8, tl=init&0xff;
+    calcOut.innerHTML=
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;">'
+      +'<div style="background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 12px;"><div style="font-size:13px;color:var(--muted);">机器周期数</div><div style="font-size:18px;font-weight:800;">'+us+' 个</div></div>'
+      +'<div style="background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 12px;"><div style="font-size:13px;color:var(--muted);">初值（十进制）</div><div style="font-size:18px;font-weight:800;font-family:Consolas,monospace;">'+init+'</div></div>'
+      +'<div style="background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 12px;"><div style="font-size:13px;color:var(--muted);">初值（十六进制）</div><div style="font-size:18px;font-weight:800;font-family:Consolas,monospace;">0x'+hex16(init)+'</div></div>'
+      +'<div style="background:var(--red-bg);border:1px solid var(--red-line);border-radius:10px;padding:10px 12px;"><div style="font-size:13px;color:var(--muted);">TH0（高8位）</div><div style="font-size:18px;font-weight:800;font-family:Consolas,monospace;color:var(--red);">0x'+hex8(th)+' = '+th+'</div></div>'
+      +'<div style="background:var(--blue-bg);border:1px solid var(--blue-line);border-radius:10px;padding:10px 12px;"><div style="font-size:13px;color:var(--muted);">TL0（低8位）</div><div style="font-size:18px;font-weight:800;font-family:Consolas,monospace;color:var(--blue);">0x'+hex8(tl)+' = '+tl+'</div></div>'
+      +'</div>';
+  }
+
+  calcMs.addEventListener('input',function(){
+    var ms=parseFloat(calcMs.value);
+    if(isFinite(ms)){ calcUs.value=Math.round(ms*1000); }
+    calcResult();
+  });
+  calcUs.addEventListener('input',function(){
+    var us=parseFloat(calcUs.value);
+    if(isFinite(us)){ calcMs.value=(us/1000).toFixed(3); }
+    calcResult();
+  });
+  var presets=document.querySelectorAll('.preset');
+  for(var pi=0;pi<presets.length;pi++){
+    presets[pi].addEventListener('click',function(){
+      var us=parseInt(this.getAttribute('data-us'),10);
+      calcUs.value=us; calcMs.value=(us/1000).toFixed(3);
+      calcResult();
+    });
+  }
+  calcResult();
+})();
+</script>
+</body>
+</html>

@@ -25,6 +25,5 @@ void main(){
     P24 = 1;
     while(1){
         P0 = CC_Table[1];
-
     }
 }
