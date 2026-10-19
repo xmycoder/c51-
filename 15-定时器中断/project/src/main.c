@@ -6,6 +6,7 @@ void main()
     Dir_Timer0_Init();
     while (1)
     {
-        Dir_Timer0_Handler();
+        // Dir_Timer0_Handler();
+        // 自动调用，不用手动写
     }
 }

@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>点阵LED与74HC595课堂讲解（89C52）</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='2' width='20' height='20' rx='3' fill='%230f172a'/%3E%3Cg fill='%23f59e0b'%3E%3Crect x='5' y='5' width='3.5' height='3.5'/%3E%3Crect x='10' y='5' width='3.5' height='3.5'/%3E%3Crect x='15' y='5' width='3.5' height='3.5'/%3E%3Crect x='5' y='10' width='3.5' height='3.5'/%3E%3Crect x='15' y='10' width='3.5' height='3.5'/%3E%3Crect x='10' y='15' width='3.5' height='3.5'/%3E%3Crect x='15' y='15' width='3.5' height='3.5'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+  :root{
+    --ink:#0f172a; --sub:#475569; --muted:#64748b;
+    --bg:#eef2f7; --card:#ffffff; --line:#dde3ec;
+    --blue:#1d4ed8; --blue-bg:#dbeafe; --blue-line:#bfdbfe;
+    --red:#dc2626; --red-bg:#fee2e2; --red-line:#fecaca;
+    --amber:#b45309; --amber-bg:#fef3c7; --amber-line:#fde68a;
+    --green:#047857; --green-bg:#d1fae5; --green-line:#a7f3d0;
+    --code-bg:#0f172a; --code-ink:#e2e8f0; --code-dim:#94a3b8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.65;
+    font-size:16px;
+  }
+  .topnav{
+    position:sticky; top:0; z-index:50;
+    background:rgba(15,23,42,.96); color:#e2e8f0;
+    padding:10px 16px;
+    display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center;
+    box-shadow:0 1px 8px rgba(15,23,42,.25);
+  }
+  .topnav .brand{font-weight:700;font-size:15px;margin-right:auto;color:#fff;}
+  .topnav a{color:#cbd5e1;text-decoration:none;font-size:14px;padding:6px 2px;}
+  .topnav a:hover{color:#fff;}
+  .wrap{max-width:1080px;margin:0 auto;padding:20px 16px 60px;}
+  section{margin-top:38px;}
+  h2{
+    font-size:26px;font-weight:800;color:var(--ink);
+    display:flex;align-items:center;gap:10px;margin-bottom:6px;
+  }
+  h2 .step-badge{
+    flex:none;width:40px;height:40px;border-radius:12px;
+    background:var(--blue);color:#fff;font-size:18px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .lead{color:var(--sub);font-size:16px;margin-bottom:16px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:14px;}
+  .card h3{font-size:18px;margin-bottom:10px;}
+  .grid2{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;}
+  code,pre{font-family:Consolas,"Courier New",monospace;}
+  pre.code{
+    background:var(--code-bg);color:var(--code-ink);
+    border-radius:10px;padding:14px 16px;overflow-x:auto;
+    font-size:15px;line-height:1.7;max-width:100%;
+  }
+  pre.code .c{color:var(--code-dim);}
+  pre.code .k{color:#93c5fd;font-weight:700;}
+  pre.code .v{color:#fca5a5;}
+  pre.code .n{color:#fde68a;}
+  .inline-code{background:#e8edf5;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:.92em;color:#1e3a8a;}
+  table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:8px;font-size:15px;}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;word-break:break-word;}
+  th{background:#f1f5f9;font-weight:700;}
+  .note{border-radius:10px;padding:12px 14px;font-size:15px;margin-top:12px;}
+  .note.warn{background:var(--amber-bg);border:1px solid var(--amber-line);color:#78350f;}
+  .note.good{background:var(--green-bg);border:1px solid var(--green-line);color:#064e3b;}
+  .note.info{background:var(--blue-bg);border:1px solid var(--blue-line);color:#1e3a8a;}
+  .btn{
+    font-family:inherit;font-size:15px;font-weight:700;
+    border:1px solid var(--blue-line);background:var(--blue-bg);color:var(--blue);
+    border-radius:9px;padding:10px 14px;min-height:44px;cursor:pointer;
+    transition:background .15s,transform .05s;
+  }
+  .btn:hover{background:#bfdbfe;}
+  .btn:active{transform:scale(.97);}
+  .btn.on{background:var(--blue);color:#fff;}
+  .btn.ghost{background:#fff;color:var(--sub);border-color:var(--line);}
+  .btn.ghost:hover{background:#f1f5f9;}
+  .btn:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #93c5fd;outline-offset:2px;}
+  .chip{display:inline-block;background:#e8edf5;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:13px;color:var(--sub);}
+  .mono{font-family:Consolas,"Courier New",monospace;}
+  @media (min-width:768px){
+    .grid2{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+  }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand">点阵LED · 74HC595 课堂讲解</span>
+  <a href="#what">595是什么</a>
+  <a href="#pins">引脚</a>
+  <a href="#shift">移位动画</a>
+  <a href="#matrix">点阵扫描</a>
+  <a href="#code">代码讲解</a>
+  <a href="#cascade">级联</a>
+  <a href="#pits">避坑</a>
+</nav>
+
+<div class="wrap">
+
+  <!-- ===== Hero ===== -->
+  <section id="hero" style="margin-top:6px;">
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#e2e8f0;padding:26px 22px 20px;">
+        <div style="font-size:14px;letter-spacing:2px;color:#fbbf24;font-weight:700;">89C52 · 8×8 点阵 · 74HC595</div>
+        <h1 style="font-size:30px;line-height:1.3;margin:8px 0 6px;color:#fff;">3 根线，点亮 64 个 LED</h1>
+        <p style="font-size:16px;color:#cbd5e1;">8×8 点阵直接驱动要 16 根 IO，单片机根本不够用。74HC595 是「串行输入、并行输出」的移位寄存器：<b style="color:#fff;">用 3 根线（数据、移位、锁存）控制 8 个输出</b>，还能一片接一片级联。下面的动画会一步步演示数据是怎么"排队进去、一起出来"的。</p>
+      </div>
+      <div style="padding:18px 20px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+          <span style="font-weight:800;font-size:17px;">74HC595 核心概念</span>
+          <span class="chip">串行进：SER 一位一位进</span>
+          <span class="chip">并行出：Q0~Q7 一次全给</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center;">
+          <div class="mono" style="background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;text-align:center;">
+            <div style="font-weight:800;color:var(--blue);">SER</div>
+            <div style="color:var(--muted);">数据</div>
+          </div>
+          <span style="color:var(--muted);">→</span>
+          <div style="display:flex;gap:3px;">
+            <span style="width:34px;height:26px;background:var(--blue-bg);border:1px solid var(--blue-line);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--blue);">R0</span>
+            <span style="width:34px;height:26px;background:var(--blue-bg);border:1px solid var(--blue-line);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--blue);">R1</span>
+            <span style="width:34px;height:26px;background:var(--blue-bg);border:1px solid var(--blue-line);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--blue);">…</span>
+            <span style="width:34px;height:26px;background:var(--blue-bg);border:1px solid var(--blue-line);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--blue);">R7</span>
+          </div>
+          <span style="color:var(--muted);">RCLK 锁存</span>
+          <div style="display:flex;gap:3px;">
+            <span style="width:30px;height:26px;background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--amber);">Q0</span>
+            <span style="width:30px;height:26px;background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--amber);">Q1</span>
+            <span style="width:30px;height:26px;background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--amber);">…</span>
+            <span style="width:30px;height:26px;background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--amber);">Q7</span>
+          </div>
+        </div>
+        <div class="note info" style="margin-top:14px;">
+          <b>一句话原理：</b>数据从 SER 每次进 1 位（移位寄存器里排队），<b>移满 8 位</b>后，给 RCLK 一个脉冲，8 位数据<b>一次性</b>同时出现在 Q0~Q7 上——就像 8 个人排队进门，站齐了才一起喊"稍息"。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第1节：595 是什么 ===== -->
+  <section id="what">
+    <h2>74HC595 是什么：串入并出</h2>
+    <p class="lead">全名「8 位串行输入 / 并行输出移位寄存器」：输入侧只有 1 根数据线，输出侧却有 8 根。用时间换 IO。</p>
+    <div class="grid2">
+      <div class="card" style="margin-top:0;">
+        <h3>为什么要它</h3>
+        <table>
+          <colgroup><col style="width:34%"><col style="width:66%"></colgroup>
+          <tr><th>方案</th><th>需要的 IO</th></tr>
+          <tr><td>8×8 点阵直连</td><td>8 行 + 8 列 = <b>16 根</b>，89C52 全用光</td></tr>
+          <tr><td>用 1 片 74HC595</td><td>SER + SRCLK + RCLK = <b>3 根</b>（+ P0 管另一维 8 根）</td></tr>
+          <tr><td>再级联 1 片</td><td>仍 3 根，多 8 个输出（Q7' 接下一片）</td></tr>
+        </table>
+        <div class="note good" style="margin-top:10px;">
+          这是「<b>移位寄存器</b>」类芯片的典型价值：数据慢点进（一位一位），输出却能很多（一片 8 位，可无限级联）。
+        </div>
+      </div>
+      <div class="card" style="margin-top:0;">
+        <h3>三个关键引脚，三根控制线</h3>
+        <table>
+          <colgroup><col style="width:30%"><col style="width:70%"></colgroup>
+          <tr><th>引脚</th><th>作用（一个词记住）</th></tr>
+          <tr><td><b>SER</b></td><td>串行数据输入——<b>进</b>，每次 1 位</td></tr>
+          <tr><td><b>SRCLK</b></td><td>移位时钟——<b>走</b>，上升沿移进 1 位</td></tr>
+          <tr><td><b>RCLK</b></td><td>锁存时钟——<b>停</b>，上升沿把 8 位一次送到输出</td></tr>
+        </table>
+        <div class="note warn" style="margin-top:10px;">
+          还有两个常接死的脚：<b>OE</b>（输出使能，低有效，接地常开）、<b>SRCLR</b>（移位清零，低有效，接高常开）。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第2节：引脚 ===== -->
+  <section id="pins">
+    <h2>引脚图与引脚表（DIP-16）</h2>
+    <p class="lead">认识 16 个脚：左边输入侧，右边输出侧，9 脚 Q7' 是留给级联的"尾巴"。</p>
+    <div class="card">
+      <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
+        <div style="flex:1 1 300px;min-width:280px;font-family:Consolas,monospace;font-size:13px;line-height:1.9;">
+          <div style="display:flex;justify-content:space-between;">
+            <span>1 QB</span><span style="color:var(--muted);">15 QA</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span>2 QC</span><span style="color:var(--muted);">14 SER</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span>3 QD</span><span style="color:var(--muted);">13 OE</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span>4 QE</span><span style="color:var(--muted);">12 RCLK</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span>5 QF</span><span style="color:var(--muted);">11 SRCLK</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span>6 QG</span><span style="color:var(--muted);">10 SRCLR</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span>7 QH</span><span style="color:var(--muted);">9 Q7'</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:4px;padding-top:4px;">
+            <span>8 GND</span><span style="color:var(--muted);">16 VCC</span>
+          </div>
+          <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:6px;">左列 1~8，右列 16~9（缺口朝上）</div>
+        </div>
+        <table style="flex:1 1 380px;min-width:340px;">
+          <colgroup><col style="width:20%"><col style="width:18%"><col style="width:62%"></colgroup>
+          <tr><th>引脚</th><th>名称</th><th>说明</th></tr>
+          <tr><td>14</td><td>SER</td><td>串行数据输入</td></tr>
+          <tr><td>11</td><td>SRCLK</td><td>移位时钟（上升沿移 1 位）</td></tr>
+          <tr><td>12</td><td>RCLK</td><td>锁存时钟（上升沿输出）</td></tr>
+          <tr><td>13</td><td>OE</td><td>输出使能，<b>低有效</b>：0=允许输出，1=全部关闭</td></tr>
+          <tr><td>10</td><td>SRCLR</td><td>移位寄存器清零，<b>低有效</b></td></tr>
+          <tr><td>15,1~7</td><td>QA~QH</td><td>8 个并行输出（本页代码里叫 Q0~Q7）</td></tr>
+          <tr><td>9</td><td>Q7'</td><td>串行输出，接下一片 SER 用于级联</td></tr>
+          <tr><td>16 / 8</td><td>VCC / GND</td><td>电源 2~6V（5V 系统直接用）</td></tr>
+        </table>
+      </div>
+      <div class="note warn" style="margin-top:12px;">
+        <b>OE 是低有效，最容易踩坑：</b>高电平时 8 个输出全部被强制关闭，怎么送数都不亮。开发板上 OE 一般直接接地（常开），如果点阵不亮，先量一下 OE 是不是低电平。
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第3节：移位动画 ===== -->
+  <section id="shift">
+    <h2>核心：数据怎么"排队进去、一起出来"</h2>
+    <p class="lead">以"把 0x01 送到输出"为例：0x01 的 8 个位是 <b>0000 0001</b>（Q0 亮，其余灭）。按<b>先送最高位</b>的顺序，SER 依次给 0,0,0,0,0,0,0,1，每来一个 SRCLK 上升沿移进一格；8 个脉冲后，RCLK 上升沿，Q0~Q7 一次性输出。</p>
+
+    <div class="card" style="padding:20px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+        <span style="font-weight:800;font-size:17px;">移位演示</span>
+        <span class="chip" id="dataLabel">数据 0x01</span>
+        <span class="chip" id="stepLabel">已移位 0 / 8</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-weight:700;color:var(--blue);font-size:14px;">SER</span>
+          <span id="serDot" style="width:20px;height:20px;border-radius:50%;background:#cbd5e1;border:2px solid #94a3b8;display:inline-block;"></span>
+          <span id="serVal" class="mono" style="font-size:15px;font-weight:800;">0</span>
+          <span style="color:var(--muted);">当前要送的位</span>
+          <span style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);">
+            移位寄存器（进一位，全体右移一格）
+          </span>
+        </div>
+        <div id="shiftReg" style="display:grid;grid-template-columns:repeat(8,1fr);gap:4px;"></div>
+
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-weight:700;color:var(--amber);font-size:14px;">SRCLK</span>
+          <span id="srclkDot" style="width:20px;height:20px;border-radius:50%;background:#cbd5e1;border:2px solid #94a3b8;display:inline-block;"></span>
+          <span style="color:var(--muted);">移位脉冲（上升沿移一位）</span>
+          <span style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);">
+            锁存后输出（Q0~Q7 同时更新）
+          </span>
+        </div>
+        <div id="outReg" style="display:grid;grid-template-columns:repeat(8,1fr);gap:4px;"></div>
+
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-weight:700;color:var(--red);font-size:14px;">RCLK</span>
+          <span id="rclkDot" style="width:20px;height:20px;border-radius:50%;background:#cbd5e1;border:2px solid #94a3b8;display:inline-block;"></span>
+          <span id="latchHint" style="font-size:14px;color:var(--muted);">移位满 8 位后，点"锁存"把数据一次送出</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:18px;">
+        <button class="btn" id="sendBtn">送一位（SER → SRCLK）</button>
+        <button class="btn ghost" id="autoBtn">自动送 8 位</button>
+        <button class="btn ghost" id="latchBtn" disabled style="opacity:.55;">锁存 RCLK</button>
+        <button class="btn ghost" id="clearBtn">清空</button>
+        <span style="font-size:14px;color:var(--sub);">预设数据</span>
+        <button class="btn ghost preset" data-v="1">0x01（Q0亮）</button>
+        <button class="btn ghost preset on" data-v="1" style="display:none;"></button>
+        <button class="btn ghost preset" data-v="128">0x80（Q7亮）</button>
+        <button class="btn ghost preset" data-v="252">0xFC（Q2~Q7亮）</button>
+      </div>
+      <div id="shiftNote" class="note good" style="margin-top:14px;">
+        观察：8 个 SRCLK 之后，移位寄存器里正好是 <b>0000 0001</b>，点"锁存"，Q0 亮起。注意送数顺序是<b>先送最高位</b>（bit7 → bit0）。
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>时序怎么写在代码里</h3>
+      <p style="font-size:15px;color:var(--sub);margin-bottom:10px;">一次"送 1 位"= 三步：把 SER 置成要送的位 → SRCLK 给一个脉冲（1 再 0）→ 数据进一格。</p>
+      <pre class="code"><span class="c">// 送一个字节 0x01（bit7 到 bit0，共 8 位）</span>
+<span class="k">for</span> (i = <span class="n">0</span>; i &lt; <span class="n">8</span>; i++)
+{
+    SER = (data &gt;&gt; (<span class="n">7</span> - i)) &amp; <span class="n">0x01</span>;   <span class="c">// ① 取当前位放到数据线</span>
+    SRCLK = <span class="n">1</span>;                       <span class="c">// ② 移位时钟上升沿</span>
+    SRCLK = <span class="n">0</span>;                       <span class="c">//    拉回低电平，准备下一个脉冲</span>
+}
+RCLK = <span class="n">1</span>;                           <span class="c">// ③ 锁存：8 位一次输出</span>
+RCLK = <span class="n">0</span>;</pre>
+      <div class="note warn" style="margin-top:10px;">
+        <b>两个时钟都要"1 再 0"给完整脉冲</b>——上升沿（0→1）才触发动作，只拉高不拉低，下一个脉冲就没了。这是写驱动最常见的错。
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第4节：点阵扫描 ===== -->
+  <section id="matrix">
+    <h2>8×8 点阵：同一时刻只亮一行</h2>
+    <p class="lead">64 个 LED 排成 8 行 8 列。硬件上不可能让 64 个同时受控（IO 不够），所以用<b>逐行扫描</b>：同一时刻只点亮一行，8 行飞快地轮流亮，靠人眼<b>视觉暂留</b>拼出完整画面。</p>
+    <div class="card">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;">
+        <div id="ledGrid" style="display:grid;grid-template-columns:repeat(8,26px);gap:5px;background:#0f172a;border-radius:10px;padding:12px;"></div>
+        <div style="flex:1 1 260px;min-width:240px;">
+          <div style="font-weight:800;font-size:16px;margin-bottom:8px;">扫描状态</div>
+          <table>
+            <colgroup><col style="width:40%"><col style="width:60%"></colgroup>
+            <tr><th>当前扫描行</th><td><span class="mono" id="curRow" style="font-weight:800;color:var(--blue);">0</span> / 8</td></tr>
+            <tr><th>行数据 ~buf[i]</th><td><span class="mono" id="rowHex" style="font-weight:800;">0xFE</span></td></tr>
+            <tr><th>该行点亮列</th><td><span class="mono" id="rowBits">0000 0001</span></td></tr>
+            <tr><th>实际工程节奏</th><td>1ms/行 → 8ms 一帧 ≈ <b>125Hz</b>，不闪</td></tr>
+          </table>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center;">
+            <span style="font-size:14px;color:var(--sub);">演示速度</span>
+            <button class="btn ghost spd-scan" data-ms="260">慢</button>
+            <button class="btn spd-scan on" data-ms="100">中</button>
+            <button class="btn ghost spd-scan" data-ms="30">快</button>
+            <button class="btn ghost" id="scanPause">暂停</button>
+          </div>
+        </div>
+      </div>
+      <div class="note info" style="margin-top:14px;">
+        <b>本工程图案：</b>pic[8] = 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80 —— 8 行各亮 1 个点，且逐行往右移一列，所以画面是一条<b>从左上到右下的斜线</b>。每一行数据取反（<code class="inline-code">~</code>）是因为点阵用<b>低电平点亮</b>。
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第5节：代码讲解 ===== -->
+  <section id="code">
+    <h2>工程代码逐行讲解</h2>
+    <p class="lead">对照工程 <code class="inline-code">src/Int/Int_MatrixLED.c</code> 和 <code class="inline-code">src/main.c</code>。</p>
+
+    <div class="card">
+      <h3>引脚定义</h3>
+      <pre class="code"><span class="c">// 74HC595 的三根控制线接到 P3.4 / P3.5 / P3.6</span>
+<span class="k">#define</span> <span class="v">SRE</span>   <span class="n">P34</span>    <span class="c">// 数据/使能线：接 595 哪个功能脚（SER 或 OE），看原理图</span>
+<span class="k">#define</span> <span class="v">RCLK</span>  <span class="n">P35</span>    <span class="c">// 锁存时钟 → 595.RCLK（上升沿把 8 位送到输出）</span>
+<span class="k">#define</span> <span class="v">SRCLK</span> <span class="n">P36</span>    <span class="c">// 移位时钟 → 595.SRCLK（上升沿移入 1 位）</span></pre>
+      <div class="note warn" style="margin-top:10px;">
+        <b>SRE 这个名字和接法要看开发板：</b>不同板子对 P3.4 这根线的称呼不同（有的接 595 的 SER，有的接 OE）。上课前先确认 J24 跳线帽插好、对照模块原理图看 P3.4/P3.5/P3.6 分别进了 595 的哪个脚——<b>代码逻辑一样，硬件接法决定现象</b>。
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>显示缓冲区与设置图案</h3>
+      <pre class="code"><span class="c">// main.c：8 个字节 = 8 行，每行 1 位为 1（取反后是 0 = 点亮）</span>
+u8 pic[8] = { <span class="n">0x01</span>, <span class="n">0x02</span>, <span class="n">0x04</span>, <span class="n">0x08</span>,
+              <span class="n">0x10</span>, <span class="n">0x20</span>, <span class="n">0x40</span>, <span class="n">0x80</span> };
+Int_MatrixLED_SetPic(pic);   <span class="c">// 拷进显示缓冲区</span>
+
+<span class="c">// Int_MatrixLED.c：把图案存进 s_led_buff</span>
+<span class="k">static</span> <span class="v">u8</span> s_led_buff[<span class="n">8</span>];      <span class="c">// 显示缓冲区：8 行 × 8 位</span>
+<span class="k">void</span> Int_MatrixLED_SetPic(<span class="v">u8</span> *pic)
+{
+    <span class="v">u8</span> i;
+    <span class="k">for</span>(i=<span class="n">0</span>;i&lt;<span class="n">8</span>;i++){ s_led_buff[i] = pic[i]; }
+}</pre>
+      <div class="note warn" style="margin-top:10px;">
+        工程原文件写的是 <code class="inline-code">static s_led_buff[8];</code> —— <b>缺了类型</b>，SDCC 默认按 int（16 位）处理，功能碰巧对。建议写成 <code class="inline-code">static u8 s_led_buff[8];</code>。
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Refresh：逐行扫描的五步节奏</h3>
+      <table>
+        <colgroup><col style="width:8%"><col style="width:30%"><col style="width:30%"><col style="width:32%"></colgroup>
+        <tr><th>步</th><th>代码</th><th>动作</th><th>为什么</th></tr>
+        <tr><td>①</td><td><code class="inline-code">P0 = 0xff;</code></td><td>全部行关闭</td><td>消隐，防止换行瞬间拖影</td></tr>
+        <tr><td>②</td><td><code class="inline-code">RCLK = 1; RCLK = 0;</code></td><td>锁存脉冲</td><td>把 595 里已移入的数据一次输出</td></tr>
+        <tr><td>③</td><td><code class="inline-code">P0 = ~s_led_buff[i];</code></td><td>选中第 i 行</td><td>该行要亮的列是 0（低电平点亮）</td></tr>
+        <tr><td>④</td><td><code class="inline-code">SRCLK = 1; SRCLK = 0;</code></td><td>移位脉冲</td><td>让 595 接收这一行的数据</td></tr>
+        <tr><td>⑤</td><td><code class="inline-code">Delayms(1);</code></td><td>保持 1ms</td><td>视觉暂留，然后扫下一行</td></tr>
+      </table>
+      <pre class="code" style="margin-top:12px;"><span class="k">void</span> Int_MatrixLED_Refresh()
+{
+    <span class="v">u8</span> i;
+    SRE = <span class="n">1</span>; SRCLK = <span class="n">1</span>; SRCLK = <span class="n">0</span>; SRE = <span class="n">0</span>;  <span class="c">// 开场动作（作用看原理图）</span>
+    <span class="k">for</span>(i=<span class="n">0</span>;i&lt;<span class="n">8</span>;i++){
+        P0 = <span class="n">0xff</span>;              <span class="c">// ① 关行消隐</span>
+        RCLK = <span class="n">1</span>; RCLK = <span class="n">0</span>;    <span class="c">// ② 锁存输出</span>
+        P0 = ~s_led_buff[i];     <span class="c">// ③ 选中第 i 行</span>
+        SRCLK = <span class="n">1</span>; SRCLK = <span class="n">0</span>; <span class="c">// ④ 移位脉冲</span>
+        Delayms(<span class="n">1</span>);            <span class="c">// ⑤ 保持 1ms</span>
+    }                            <span class="c">// 8 行扫完 = 8ms 一帧 ≈ 125Hz</span>
+}</pre>
+      <div class="note good" style="margin-top:10px;">
+        <b>主程序里就是死循环刷：</b><code class="inline-code">while(1){ Int_MatrixLED_Refresh(); }</code>，靠不断重扫维持画面；改 <code class="inline-code">s_led_buff</code> 里的 8 个字节，画面就变。
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第6节：级联 ===== -->
+  <section id="cascade">
+    <h2>一片不够？Q7' 级联扩展</h2>
+    <p class="lead">595 的 9 脚 Q7' 是"移位寄存器最右一位"的串行输出：数据从右边掉出来时，把它接到下一片的 SER，就能一片接一片，<b>IO 始终只有 3 根</b>。</p>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;font-size:14px;">
+        <span class="chip">MCU</span>
+        <span style="color:var(--muted);">SER / SRCLK / RCLK</span>
+        <span class="chip" style="background:var(--blue-bg);border-color:var(--blue-line);color:var(--blue);">第1片 595</span>
+        <span style="color:var(--muted);">Q7' → SER</span>
+        <span class="chip" style="background:var(--blue-bg);border-color:var(--blue-line);color:var(--blue);">第2片 595</span>
+        <span style="color:var(--muted);">Q7' → …</span>
+        <span class="chip">N 片 = 8×N 输出</span>
+      </div>
+      <pre class="code" style="margin-top:14px;"><span class="c">// 两片级联送 16 位：先送第 2 片的数据（高 8 位），再送第 1 片（低 8 位）</span>
+<span class="k">for</span>(i=<span class="n">0</span>;i&lt;<span class="n">16</span>;i++){
+    SER = (data16 &gt;&gt; (<span class="n">15</span>-i)) &amp; <span class="n">0x01</span>;
+    SRCLK = <span class="n">1</span>; SRCLK = <span class="n">0</span>;
+}
+RCLK = <span class="n">1</span>; RCLK = <span class="n">0</span>;   <span class="c">// 两片一起锁存，输出同时更新</span></pre>
+      <div class="note info" style="margin-top:10px;">
+        应用：2 片 → 8×16 点阵 / 16 位数码管段选；更多片 → 大屏。唯一代价是送数时间变长，但每片只需 8 个脉冲，速度足够。
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第7节：避坑 ===== -->
+  <section id="pits">
+    <h2>上课必讲的 8 个坑</h2>
+    <div class="grid2" style="margin-top:12px;">
+      <div class="note warn" style="margin:0;">
+        <b>① OE 低有效</b><br>
+        13 脚 OE 高电平 = 输出全关，怎么送数都不亮。不亮先量 OE 是不是低电平（开发板一般接地）。
+      </div>
+      <div class="note warn" style="margin:0;">
+        <b>② 时钟要给完整脉冲</b><br>
+        SRCLK / RCLK 都是上升沿触发，必须"1 再 0"。只拉高不拉回低，下一个脉冲不触发。
+      </div>
+      <div class="note warn" style="margin:0;">
+        <b>③ 移满 8 位再锁存</b><br>
+        边移边锁存 = 显示错乱。8 个 SRCLK 之后才给 RCLK。
+      </div>
+      <div class="note warn" style="margin:0;">
+        <b>④ 送数顺序要统一</b><br>
+        本页演示先送最高位（bit7→bit0）；代码里取位写法要和它一致，混用会左右反/上下反。
+      </div>
+      <div class="note warn" style="margin:0;">
+        <b>⑤ 换行要消隐</b><br>
+        切换行瞬间把行全关（P0 = 0xff）再送新行，否则有拖影。
+      </div>
+      <div class="note warn" style="margin:0;">
+        <b>⑥ 刷新率要够高</b><br>
+        8 行 × 1ms = 8ms/帧 ≈ 125Hz 不闪；低于 50Hz 人眼能看出闪烁。
+      </div>
+      <div class="note warn" style="margin:0;">
+        <b>⑦ 级联数脉冲</b><br>
+        N 片就要送 8×N 个 SRCLK 脉冲，再统一锁存；少送一位，输出整体错位。
+      </div>
+      <div class="note warn" style="margin:0;">
+        <b>⑧ 非法注释与缺类型</b><br>
+        <code class="inline-code">#点阵刷新</code> 不是合法注释——<code class="inline-code">#</code> 会被当成预处理指令，Keil C51 报 <b>WARNING C314</b>（bad #directive syntax），不中断编译，但仍是错的，应写 <code class="inline-code">//</code>；<code class="inline-code">s_led_buff</code> 缺类型建议补 <code class="inline-code">u8</code>。
+      </div>
+    </div>
+  </section>
+
+</div>
+<script>
+(function(){
+  'use strict';
+
+  /* ============ 74HC595 移位动画 ============ */
+  var BLUE='#1d4ed8', AMBER='#b45309', RED='#dc2626';
+  var reg=[0,0,0,0,0,0,0,0], out=[0,0,0,0,0,0,0,0];
+  var dataVal=1, stepCount=0, autoTimer=null, clockTimer=null;
+  var shiftReg=document.getElementById('shiftReg');
+  var outReg=document.getElementById('outReg');
+
+  function cellHTML(v,color,bg){
+    return '<div style="text-align:center;border:1px solid '+(v?color:'var(--line)')+';border-radius:6px;padding:6px 2px;background:'+(v?bg:'#f8fafc')+';font-weight:800;font-size:16px;font-family:Consolas,monospace;color:'+(v?color:'#94a3b8')+';">'+v+'</div>';
+  }
+  function renderShift(){
+    var s='';
+    for(var i=0;i<8;i++){ s+=cellHTML(reg[i],BLUE,'var(--blue-bg)'); }
+    shiftReg.innerHTML=s;
+    var o='';
+    for(var j=0;j<8;j++){ o+=cellHTML(out[j],AMBER,'var(--amber-bg)'); }
+    outReg.innerHTML=o;
+    document.getElementById('stepLabel').textContent='已移位 '+stepCount+' / 8';
+  }
+  function setDot(id,v,color){
+    var el=document.getElementById(id);
+    el.style.background=v?color:'#cbd5e1';
+    el.style.boxShadow=v?'0 0 8px '+color:'none';
+  }
+  function setSer(v){
+    document.getElementById('serVal').textContent=v;
+    setDot('serDot',v,BLUE);
+  }
+  function pulse(name){
+    var dotId=name==='SRCLK'?'srclkDot':'rclkDot';
+    var color=name==='SRCLK'?AMBER:RED;
+    setDot(dotId,1,color);
+    clearTimeout(clockTimer);
+    clockTimer=setTimeout(function(){ setDot(dotId,0,color); },220);
+  }
+  function sendBit(){
+    if(stepCount>=8){ return; }
+    var bit=(dataVal>>>(7-stepCount))&1;   // 先送最高位
+    setSer(bit);
+    reg.unshift(bit); reg.pop();           // 进一位，全体右移
+    stepCount++;
+    pulse('SRCLK');
+    renderShift();
+    if(stepCount>=8){
+      document.getElementById('latchBtn').disabled=false;
+      document.getElementById('latchBtn').style.opacity='1';
+      document.getElementById('shiftNote').innerHTML='8 位移完了，移位寄存器 = <b>0000 '+reg[0]+reg[1]+reg[2]+reg[3]+' '+reg[4]+reg[5]+reg[6]+reg[7]+'</b>。现在点"锁存 RCLK"，Q0~Q7 一次性输出。';
+    }
+  }
+  function latch(){
+    if(stepCount<8){ return; }
+    for(var i=0;i<8;i++){ out[i]=reg[i]; }
+    pulse('RCLK');
+    renderShift();
+    var hex=0;
+    for(var j=0;j<8;j++){ hex=(hex<<1)|out[j]; }
+    document.getElementById('shiftNote').innerHTML='锁存完成：Q0~Q7 = <b>0x'+('00'+hex.toString(16).toUpperCase()).slice(-2)+'</b>，对应输出脚同时变高。';
+  }
+  function clearAll(){
+    clearInterval(autoTimer); clearTimeout(clockTimer);
+    reg=[0,0,0,0,0,0,0,0]; out=[0,0,0,0,0,0,0,0]; stepCount=0;
+    setSer(0);
+    document.getElementById('autoBtn').textContent='自动送 8 位';
+    document.getElementById('latchBtn').disabled=true;
+    document.getElementById('latchBtn').style.opacity='.55';
+    document.getElementById('shiftNote').innerHTML='观察：8 个 SRCLK 之后，移位寄存器里正好是 <b>0000 0001</b>，点"锁存"，Q0 亮起。注意送数顺序是<b>先送最高位</b>（bit7 → bit0）。';
+    renderShift();
+  }
+  function setPreset(v){
+    clearInterval(autoTimer);
+    document.getElementById('autoBtn').textContent='自动送 8 位';
+    dataVal=v;
+    document.getElementById('dataLabel').textContent='数据 0x'+('00'+v.toString(16).toUpperCase()).slice(-2);
+    clearAll();
+    var bits='';
+    for(var i=7;i>=0;i--){ bits+=(v>>i)&1; }
+    document.getElementById('shiftNote').innerHTML='当前数据 <b>0x'+('00'+v.toString(16).toUpperCase()).slice(-2)+'</b> = '+bits+'（先送最高位）。点"送一位"或"自动送 8 位"。';
+  }
+
+  document.getElementById('sendBtn').addEventListener('click',function(){ if(autoTimer){clearInterval(autoTimer);document.getElementById('autoBtn').textContent='自动送 8 位';} sendBit(); });
+  document.getElementById('autoBtn').addEventListener('click',function(){
+    if(autoTimer){ clearInterval(autoTimer); autoTimer=null; this.textContent='自动送 8 位'; return; }
+    clearAll();
+    autoTimer=setInterval(sendBit,650);
+    this.textContent='停止自动';
+  });
+  document.getElementById('latchBtn').addEventListener('click',latch);
+  document.getElementById('clearBtn').addEventListener('click',clearAll);
+  var presets=document.querySelectorAll('.preset');
+  for(var pi=0;pi<presets.length;pi++){
+    presets[pi].addEventListener('click',function(){
+      setPreset(parseInt(this.getAttribute('data-v'),10));
+      for(var q=0;q<presets.length;q++){ presets[q].classList.remove('on'); }
+      this.classList.add('on');
+    });
+  }
+  setPreset(1);
+
+  /* ============ 8×8 点阵扫描动画 ============ */
+  var buf=[0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80];
+  var curRow=0, scanTimer=null, scanMs=100, scanPlaying=true;
+  var ledGrid=document.getElementById('ledGrid');
+  var cells=[];
+  for(var r=0;r<8;r++){
+    for(var c=0;c<8;c++){
+      var cell=document.createElement('div');
+      cell.style.cssText='width:26px;height:26px;border-radius:50%;background:#1e293b;border:1px solid #334155;';
+      ledGrid.appendChild(cell);
+      cells.push(cell);
+    }
+  }
+  function renderScan(){
+    for(var r=0;r<8;r++){
+      for(var c=0;c<8;c++){
+        var lit=(r===curRow)&&((buf[r]>>c)&1);
+        var el=cells[r*8+c];
+        el.style.background=lit?'#f59e0b':'#1e293b';
+        el.style.boxShadow=lit?'0 0 10px #f59e0b':'none';
+        el.style.borderColor=lit?'#fbbf24':'#334155';
+      }
+    }
+    document.getElementById('curRow').textContent=curRow;
+    var rowVal=~buf[curRow]&0xff;
+    document.getElementById('rowHex').textContent='0x'+('00'+rowVal.toString(16).toUpperCase()).slice(-2);
+    var bits='';
+    for(var c2=7;c2>=0;c2--){ bits+=(buf[curRow]>>c2)&1; }
+    document.getElementById('rowBits').textContent=bits+'（1=点亮）';
+  }
+  function startScan(){
+    clearInterval(scanTimer);
+    scanTimer=setInterval(function(){
+      if(!scanPlaying){ return; }
+      curRow=(curRow+1)%8;
+      renderScan();
+    },scanMs);
+  }
+  var spdBtns=document.querySelectorAll('.spd-scan');
+  for(var si=0;si<spdBtns.length;si++){
+    spdBtns[si].addEventListener('click',function(){
+      scanMs=parseInt(this.getAttribute('data-ms'),10);
+      for(var q2=0;q2<spdBtns.length;q2++){ spdBtns[q2].classList.remove('on'); }
+      this.classList.add('on');
+      startScan();
+    });
+  }
+  document.getElementById('scanPause').addEventListener('click',function(){
+    scanPlaying=!scanPlaying;
+    this.textContent=scanPlaying?'暂停':'继续';
+  });
+  renderScan();
+  startScan();
+
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    scanPlaying=false;
+    document.getElementById('scanPause').textContent='继续';
+  }
+})();
+</script>
+</body>
+</html>
