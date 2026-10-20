@@ -1,4 +1,4 @@
-BL51 BANKED LINKER/LOCATER V6.22                                                        10/11/2026  15:57:03  PAGE 1
+BL51 BANKED LINKER/LOCATER V6.22                                                        10/21/2026  00:10:39  PAGE 1
 
 
 BL51 BANKED LINKER/LOCATER V6.22, INVOKED BY:
@@ -26,8 +26,10 @@ LINK MAP OF MODULE:  .\Objects\PROJECT (?C_STARTUP)
 
             * * * * * * *   C O D E   M E M O R Y   * * * * * * *
             CODE    0000H     0003H     ABSOLUTE     
-            CODE    0003H     0016H     UNIT         ?PR?MAIN?MAIN
-            CODE    0019H     000CH     UNIT         ?C_C51STARTUP
+            CODE    0003H     001DH     UNIT         ?PR?UART1_INIT?MAIN
+            CODE    0020H     000CH     UNIT         ?C_C51STARTUP
+            CODE    002CH     000AH     UNIT         ?PR?MAIN?MAIN
+            CODE    0036H     0008H     UNIT         ?PR?_UART_SENTBYTE?MAIN
 
 
 
@@ -40,6 +42,10 @@ SEGMENT
 ?C_C51STARTUP
   +--> ?PR?MAIN?MAIN
 
+?PR?MAIN?MAIN
+  +--> ?PR?UART1_INIT?MAIN
+  +--> ?PR?_UART_SENTBYTE?MAIN
+
 
 
 SYMBOL TABLE OF MODULE:  .\Objects\PROJECT (?C_STARTUP)
@@ -48,20 +54,20 @@ SYMBOL TABLE OF MODULE:  .\Objects\PROJECT (?C_STARTUP)
   ----------------------------------
 
   -------         MODULE        ?C_STARTUP
-  C:0019H         SEGMENT       ?C_C51STARTUP
+  C:0020H         SEGMENT       ?C_C51STARTUP
   I:0008H         SEGMENT       ?STACK
   C:0000H         PUBLIC        ?C_STARTUP
   D:00E0H         SYMBOL        ACC
   D:00F0H         SYMBOL        B
+BL51 BANKED LINKER/LOCATER V6.22                                                      10/21/2026  00:10:39  PAGE 2
+
+
   D:0083H         SYMBOL        DPH
   D:0082H         SYMBOL        DPL
   N:0000H         SYMBOL        IBPSTACK
   N:0100H         SYMBOL        IBPSTACKTOP
   N:0080H         SYMBOL        IDATALEN
-  C:001CH         SYMBOL        IDATALOOP
-BL51 BANKED LINKER/LOCATER V6.22                                                      10/11/2026  15:57:03  PAGE 2
-
-
+  C:0023H         SYMBOL        IDATALOOP
   N:0000H         SYMBOL        PBPSTACK
   N:0100H         SYMBOL        PBPSTACKTOP
   N:0000H         SYMBOL        PDATALEN
@@ -70,18 +76,18 @@ SYMBOL TABLE OF MODULE:  .\Objects\PROJECT (?C_STARTUP)
   N:0000H         SYMBOL        PPAGEENABLE
   D:00A0H         SYMBOL        PPAGE_SFR
   D:0081H         SYMBOL        SP
-  C:0019H         SYMBOL        STARTUP1
+  C:0020H         SYMBOL        STARTUP1
   N:0000H         SYMBOL        XBPSTACK
   N:0000H         SYMBOL        XBPSTACKTOP
   N:0000H         SYMBOL        XDATALEN
   N:0000H         SYMBOL        XDATASTART
   C:0000H         LINE#         126
-  C:0019H         LINE#         133
-  C:001BH         LINE#         134
-  C:001CH         LINE#         135
-  C:001DH         LINE#         136
-  C:001FH         LINE#         185
-  C:0022H         LINE#         196
+  C:0020H         LINE#         133
+  C:0022H         LINE#         134
+  C:0023H         LINE#         135
+  C:0024H         LINE#         136
+  C:0026H         LINE#         185
+  C:0029H         LINE#         196
   -------         ENDMOD        ?C_STARTUP
 
   -------         MODULE        MAIN
@@ -94,42 +100,61 @@ SYMBOL TABLE OF MODULE:  .\Objects\PROJECT (?C_STARTUP)
   D:00E8H         PUBLIC        P4
   D:00A8H         PUBLIC        IE
   D:00B8H         PUBLIC        IP
-  C:0003H         PUBLIC        main
-  B:00A0H.0       PUBLIC        P20
-  B:00B0H.0       PUBLIC        P30
-  B:00A0H.1       PUBLIC        P21
-  B:00B0H.1       PUBLIC        P31
-  B:00A0H.2       PUBLIC        P22
+  B:0098H.1       PUBLIC        TI
+  C:002CH         PUBLIC        main
+  D:0099H         PUBLIC        SBUF
+  D:0087H         PUBLIC        PCON
   D:0098H         PUBLIC        SCON
-  B:00B0H.2       PUBLIC        P32
-  B:00A0H.3       PUBLIC        P23
+  D:0089H         PUBLIC        TMOD
   D:0088H         PUBLIC        TCON
-  B:00B0H.3       PUBLIC        P33
   D:00F0H         PUBLIC        B
+  D:008EH         PUBLIC        AUXR
+  C:0003H         PUBLIC        Uart1_Init
   D:00E0H         PUBLIC        ACC
+  B:00A8H.3       PUBLIC        ET1
+  D:008DH         PUBLIC        TH1
+  C:0036H         PUBLIC        _UART_SentByte
+  D:008BH         PUBLIC        TL1
+  B:0088H.6       PUBLIC        TR1
   D:00C8H         PUBLIC        T2CON
   D:00D0H         PUBLIC        PSW
+  -------         PROC          UART1_INIT
+BL51 BANKED LINKER/LOCATER V6.22                                                      10/21/2026  00:10:39  PAGE 3
+
+
+  C:0003H         LINE#         3
+  C:0003H         LINE#         4
+  C:0003H         LINE#         5
+  C:0006H         LINE#         6
+  C:0009H         LINE#         7
+  C:000CH         LINE#         8
+  C:000FH         LINE#         9
+  C:0012H         LINE#         10
+  C:0015H         LINE#         11
+  C:0018H         LINE#         12
+  C:001BH         LINE#         13
+  C:001DH         LINE#         14
+  C:001FH         LINE#         15
+  -------         ENDPROC       UART1_INIT
+  -------         PROC          _UART_SENTBYTE
+  D:0007H         SYMBOL        Byte
+  C:0036H         LINE#         20
+  C:0036H         LINE#         21
+  C:0036H         LINE#         22
+  C:0038H         LINE#         23
+  C:003BH         LINE#         25
+  C:003DH         LINE#         26
+  -------         ENDPROC       _UART_SENTBYTE
   -------         PROC          MAIN
-  C:0003H         LINE#         13
-  C:0003H         LINE#         15
-  C:0003H         LINE#         19
-  C:0006H         LINE#         20
-  C:0008H         LINE#         21
-  C:0008H         LINE#         22
-  C:000BH         LINE#         23
-  C:000DH         LINE#         24
-  C:000DH         LINE#         25
-BL51 BANKED LINKER/LOCATER V6.22                                                      10/11/2026  15:57:03  PAGE 3
-
-
-  C:0010H         LINE#         26
-  C:0012H         LINE#         27
-  C:0012H         LINE#         28
-  C:0015H         LINE#         29
-  C:0017H         LINE#         30
-  C:0017H         LINE#         32
+  C:002CH         LINE#         28
+  C:002CH         LINE#         29
+  C:002CH         LINE#         30
+  C:002FH         LINE#         31
+  C:0034H         LINE#         32
+  C:0034H         LINE#         33
+  C:0034H         LINE#         35
   -------         ENDPROC       MAIN
   -------         ENDMOD        MAIN
 
-Program Size: data=9.0 xdata=0 code=37
+Program Size: data=9.0 xdata=0 code=62
 LINK/LOCATE RUN COMPLETE.  0 WARNING(S),  0 ERROR(S)
