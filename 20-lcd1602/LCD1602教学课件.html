@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LCD1602 使用教程 · 从引脚到代码</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='6' width='28' height='20' rx='3' fill='%230F2417' stroke='%233FE08A' stroke-width='2'/%3E%3Cg fill='%233FE08A'%3E%3Crect x='6' y='10' width='2' height='8'/%3E%3Crect x='10' y='10' width='2' height='8'/%3E%3Crect x='14' y='10' width='2' height='8'/%3E%3Crect x='18' y='10' width='2' height='8'/%3E%3Crect x='22' y='10' width='2' height='8'/%3E%3Crect x='6' y='20' width='2' height='2'/%3E%3Crect x='10' y='20' width='2' height='2'/%3E%3Crect x='14' y='20' width='2' height='2'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0B1610; --bg-soft:#0E1B13; --card:#122219; --card2:#172C20;
+  --line:#244533; --line-soft:#1B3A2A;
+  --green:#3FE08A; --green-d:#1F8A56; --cyan:#5AD8E6; --amber:#FFCB6B; --red:#FF7B6B;
+  --ink:#E9F6ED; --muted:#9CBFAB; --faint:#6E9480; --code:#0A130D;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,"Courier New",monospace;
+  --sans:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.75}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+a{color:var(--green);text-decoration:none}
+/* ===== 顶部导航 ===== */
+.nav{position:sticky;top:0;z-index:50;background:rgba(11,22,16,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:1120px;margin:0 auto;padding:8px 16px;display:flex;align-items:center;gap:12px;overflow-x:auto}
+.nav-brand{display:flex;align-items:center;gap:8px;white-space:nowrap;font-family:var(--mono);font-weight:700;color:var(--green);font-size:14px}
+.nav-brand svg{flex:none}
+.nav-links{display:flex;gap:4px;white-space:nowrap}
+.nav-links a{color:var(--muted);font-size:13px;padding:6px 9px;border-radius:6px;transition:.15s}
+.nav-links a:hover{color:var(--ink);background:var(--card2)}
+/* ===== 通用区块 ===== */
+.sec{padding:56px 0 20px;scroll-margin-top:76px}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:10px}
+.sec-num{font-family:var(--mono);color:var(--green);font-size:15px;letter-spacing:.5px;flex:none}
+.sec-title{font-size:26px;font-weight:800;letter-spacing:.5px}
+.sec-sub{color:var(--muted);margin-bottom:26px;max-width:860px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:18px}
+.grid2{display:grid;grid-template-columns:1fr;gap:18px}
+.grid3{display:grid;grid-template-columns:1fr;gap:18px}
+.pill{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--green);border:1px solid var(--green-d);background:rgba(63,224,138,.08);padding:2px 10px;border-radius:999px;margin:2px 6px 2px 0}
+h3{font-size:18px;margin:6px 0 10px;color:var(--ink)}
+p{margin-bottom:10px}
+.tip,.warn{border-radius:10px;padding:12px 14px;margin:12px 0;font-size:14px}
+.tip{background:rgba(63,224,138,.08);border:1px solid var(--green-d)}
+.warn{background:rgba(255,203,107,.08);border:1px solid rgba(255,203,107,.5);color:var(--amber)}
+.tip b,.warn b{display:block;margin-bottom:2px}
+/* ===== 表格 ===== */
+.tbl{width:100%;border-collapse:collapse;margin:10px 0 14px;table-layout:fixed}
+.tbl th,.tbl td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;font-size:13.5px;word-break:break-word}
+.tbl th{background:var(--card2);color:var(--green);font-family:var(--mono);font-size:12.5px;font-weight:600}
+.tbl td code{font-family:var(--mono);color:var(--cyan);font-size:12.5px}
+/* ===== 代码 ===== */
+.code{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7;margin:10px 0}
+.code pre{white-space:pre;tab-size:4}
+.code .cm{color:var(--faint)}
+.code .st{color:var(--amber)}
+.code .kw{color:var(--green);font-weight:600}
+.code .nu{color:var(--cyan)}
+/* ===== 虚拟 LCD ===== */
+.lcd{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin:14px 0}
+.lcd-panel{background:#A9CCA3;border:4px solid #3A3F3B;border-radius:6px;box-shadow:inset 0 0 18px rgba(0,0,0,.25);padding:10px 12px;max-width:680px;margin:0 auto}
+.lcd-row{display:grid;grid-template-columns:repeat(16,1fr);gap:2px}
+.lcd-cell{aspect-ratio:1.55/1;background:#CBDDBE;color:#18321B;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:min(2.6vw,15px);font-weight:700;border-radius:2px;min-width:0;min-height:0;line-height:1.1;overflow:hidden}
+.lcd-cell.on{background:#1B3A22;color:#A9CCA3}
+.lcd-cap{max-width:680px;margin:8px auto 0;display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--muted);gap:8px;flex-wrap:wrap}
+/* ===== DDRAM 图 ===== */
+.ddr{display:grid;grid-template-columns:repeat(16,1fr);gap:3px;margin:8px 0}
+.ddr-cell{aspect-ratio:1.35/1;background:var(--card2);border:1px solid var(--line-soft);border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:.12s;min-width:0;min-height:0;overflow:hidden}
+.ddr-cell .p{font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.2}
+.ddr-cell .a{font-family:var(--mono);font-size:11px;color:var(--faint);line-height:1.2}
+.ddr-cell:hover{border-color:var(--green)}
+.ddr-cell.sel{background:rgba(63,224,138,.16);border-color:var(--green)}
+.ddr-cell.hide{opacity:.38}
+.ddr-cap{display:flex;align-items:center;gap:12px;font-size:12.5px;color:var(--muted);margin:4px 0 14px;flex-wrap:wrap}
+.ddr-cap span{display:flex;align-items:center;gap:5px}
+.ddr-read{font-family:var(--mono);font-size:14px;background:var(--code);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-top:10px;color:var(--cyan);overflow-x:auto}
+/* ===== 步骤 / 初始化 ===== */
+.stepper{display:flex;flex-direction:column;gap:0;margin:14px 0}
+.step{display:flex;gap:14px;padding:12px 0;border-left:2px solid var(--line-soft);margin-left:14px;padding-left:22px;position:relative;transition:.2s;opacity:.55}
+.step:last-child{border-left-color:transparent}
+.step.cur{opacity:1}
+.step.cur .step-dot{background:var(--green);box-shadow:0 0 0 4px rgba(63,224,138,.18)}
+.step-dot{position:absolute;left:-9px;top:16px;width:16px;height:16px;border-radius:50%;background:var(--card2);border:2px solid var(--green-d);transition:.2s}
+.step .cmd{font-family:var(--mono);color:var(--green);font-size:15px;font-weight:700;white-space:nowrap}
+.step .explain{color:var(--muted);font-size:13.5px;margin-top:2px}
+.step .bin{font-family:var(--mono);font-size:12px;color:var(--faint);margin-top:4px}
+.stepbar{display:flex;align-items:center;gap:12px;margin:6px 0 16px;flex-wrap:wrap}
+/* ===== 按钮 / 芯片 ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:9px;border:1px solid var(--green-d);background:rgba(63,224,138,.1);color:var(--green);font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
+.btn:hover{background:rgba(63,224,138,.2)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-plain{background:transparent;border-color:var(--line);color:var(--muted)}
+.btn-plain:hover{color:var(--ink);border-color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:6px 14px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--ink);font-family:var(--mono);font-size:12.5px;cursor:pointer;transition:.15s;margin:0 8px 8px 0;text-align:left}
+.chip:hover{border-color:var(--green);color:var(--green)}
+.chip.act{border-color:var(--green);background:rgba(63,224,138,.14);color:var(--green)}
+/* ===== 输入 ===== */
+.input{min-height:44px;padding:0 14px;border-radius:9px;border:1px solid var(--line);background:var(--code);color:var(--ink);font-family:var(--mono);font-size:15px;width:100%;max-width:320px}
+.input:focus{outline:none;border-color:var(--green)}
+.sim-cols{display:flex;flex-direction:column;gap:12px}
+.sim-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* ===== FAQ ===== */
+.faq-item{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:12px;background:var(--card)}
+.faq-item b{color:var(--amber);display:block;margin-bottom:4px}
+.faq-item p{color:var(--muted);font-size:14px;margin:0}
+/* ===== 页脚 ===== */
+.footer{border-top:1px solid var(--line);margin-top:56px;padding:28px 0 44px;color:var(--faint);font-size:12.5px;line-height:2}
+.footer b{color:var(--muted)}
+/* ===== 移动端适配 ===== */
+.grid2>*,.grid3>*{min-width:0}
+@media (max-width:640px){
+  .lcd-cell{font-size:10px;aspect-ratio:1.3/1}
+  .ddr-cell .p{display:none}
+  .ddr-cell .a{font-size:9.5px}
+  .ddr-cell{aspect-ratio:2/1}
+  .lcd-panel{padding:7px 8px}
+}
+/* ===== 桌面增强 ===== */
+@media (min-width:768px){
+  .grid2{grid-template-columns:1fr 1fr}
+  .grid3{grid-template-columns:repeat(3,1fr)}
+  .sec-title{font-size:30px}
+  .sim-cols{flex-direction:row;align-items:flex-start}
+  .sim-cols>div{flex:1}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 导航 ===== -->
+<nav class="nav" aria-label="章节导航">
+  <div class="nav-inner">
+    <span class="nav-brand">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2" stroke="#3FE08A" stroke-width="1.6"/><g fill="#3FE08A"><rect x="5" y="7.5" width="1.6" height="6"/><rect x="8" y="7.5" width="1.6" height="6"/><rect x="11" y="7.5" width="1.6" height="6"/><rect x="14" y="7.5" width="1.6" height="6"/><rect x="17" y="7.5" width="1.6" height="6"/><rect x="5" y="15" width="1.6" height="1.6"/><rect x="8" y="15" width="1.6" height="1.6"/></g></svg>
+      LCD1602 教学
+    </span>
+    <div class="nav-links">
+      <a href="#s1">01 认识</a>
+      <a href="#s2">02 引脚接线</a>
+      <a href="#s3">03 显示原理</a>
+      <a href="#s4">04 指令</a>
+      <a href="#s5">05 初始化</a>
+      <a href="#s6">06 驱动代码</a>
+      <a href="#s7">07 使用示例</a>
+      <a href="#s8">08 常见问题</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<header class="sec" id="hero" style="padding-top:72px">
+  <div class="wrap">
+    <div style="max-width:760px">
+      <div style="font-family:var(--mono);color:var(--green);font-size:13px;letter-spacing:2px;margin-bottom:10px">89C52 / STC89C5xRC · HD44780 兼容控制器</div>
+      <h1 style="font-size:clamp(28px,5vw,46px);line-height:1.25;letter-spacing:1px;margin-bottom:14px">LCD1602 使用教程</h1>
+      <p class="sec-sub" style="font-size:16px;margin-bottom:6px">一块 16 列 × 2 行的字符液晶，从引脚到驱动代码，一步步讲清楚它为什么能显示、怎么显示、如何用 89C52 点亮它。</p>
+    </div>
+    <div class="lcd">
+      <div class="lcd-panel" id="heroPanel" aria-label="LCD1602 虚拟演示屏"></div>
+      <div class="lcd-cap"><span>DDRAM 地址：<span id="heroAddr" style="color:var(--cyan)">0x00</span></span><span>光标随写入自动 +1（指令 0x06）</span></div>
+    </div>
+    <div class="grid3" style="margin-top:6px">
+      <div class="card" style="text-align:center"><div style="font-family:var(--mono);font-size:26px;font-weight:800;color:var(--green)">16 × 2</div><div style="color:var(--muted);font-size:13px">字符显示容量</div></div>
+      <div class="card" style="text-align:center"><div style="font-family:var(--mono);font-size:26px;font-weight:800;color:var(--green)">5.0 V</div><div style="color:var(--muted);font-size:13px">模块最佳工作电压</div></div>
+      <div class="card" style="text-align:center"><div style="font-family:var(--mono);font-size:26px;font-weight:800;color:var(--green)">HD44780</div><div style="color:var(--muted);font-size:13px">内置兼容控制器</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ===== 01 认识 ===== -->
+<section class="sec" id="s1">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">认识 LCD1602</h2></div>
+    <p class="sec-sub">LCD1602 是单片机入门最常见的字符型液晶：能显示 2 行、每行 16 个字符。它内部集成了一块 HD44780 兼容的控制芯片，芯片里自带 ASCII 字模库，所以只要把字符的 ASCII 码写进它的显示缓冲区，字符就会出现在屏幕上。</p>
+    <div class="grid2">
+      <div class="card">
+        <h3>三个核心概念</h3>
+        <p><b style="color:var(--green)">字符型</b>：每个显示位置固定放一个字符（5×7 点阵），不能逐点控制，因此不能直接显示图片。</p>
+        <p><b style="color:var(--green)">控制器 HD44780</b>：它替你完成"把 ASCII 码变成点阵"的工作，单片机只需要给它发指令和数据。</p>
+        <p><b style="color:var(--green)">自带字模（CGROM）</b>：ASCII 的 0x20~0x7F 已固化在芯片里，写 0x41 就显示 A，写 0x30 就显示 0。</p>
+        <div class="warn"><b>易错点</b>CGROM 里没有中文字模——LCD1602 无法直接显示中文。要显示自定义图形，只能用 CGRAM 的 8 个自定义字符位（详见第 03 节）。</div>
+      </div>
+      <div class="card">
+        <h3>主要技术参数</h3>
+        <table class="tbl">
+          <colgroup><col style="width:44%"><col style="width:56%"></colgroup>
+          <thead><tr><th>参数</th><th>数值</th></tr></thead>
+          <tbody>
+            <tr><td>显示容量</td><td><code>16 × 2</code> 字符</td></tr>
+            <tr><td>芯片工作电压</td><td><code>4.5 ~ 5.5 V</code></td></tr>
+            <tr><td>模块最佳工作电压</td><td><code>5.0 V</code></td></tr>
+            <tr><td>工作电流</td><td><code>2.0 mA</code>（5.0 V 时）</td></tr>
+            <tr><td>字符尺寸</td><td><code>2.95 × 4.35 mm</code>（宽×高）</td></tr>
+            <tr><td>接口</td><td>8 位并行（或 4 位），本教程用 8 位</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:12.5px;color:var(--faint);margin:0">参数来源：随项目附带的 SMC1602A 数据手册。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 02 引脚与接线 ===== -->
+<section class="sec" id="s2">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">引脚定义与接线</h2></div>
+    <p class="sec-sub">模块一共 16 个引脚。真正需要单片机控制的是 RS、R/W、E 和 8 根数据线；VSS/VDD 供电，VL 调对比度，BLA/BLK 给背光供电。</p>
+    <div class="grid2">
+      <div class="card" style="padding:14px">
+        <h3>16 脚功能速查</h3>
+        <table class="tbl" style="margin:6px 0 0">
+          <colgroup><col style="width:12%"><col style="width:14%"><col style="width:74%"></colgroup>
+          <thead><tr><th>脚</th><th>符号</th><th>功能</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><code>VSS</code></td><td>电源地（GND）</td></tr>
+            <tr><td>2</td><td><code>VDD</code></td><td>电源正极 +5V</td></tr>
+            <tr><td>3</td><td><code>VL</code></td><td>液晶对比度调节，接 10K 电位器</td></tr>
+            <tr><td>4</td><td><code>RS</code></td><td>数据/命令选择：<code>0</code> 指令，<code>1</code> 数据</td></tr>
+            <tr><td>5</td><td><code>R/W</code></td><td>读/写选择：<code>0</code> 写，<code>1</code> 读</td></tr>
+            <tr><td>6</td><td><code>E</code></td><td>使能信号：下降沿锁存数据</td></tr>
+            <tr><td>7~14</td><td><code>D0~D7</code></td><td>8 位并行数据总线</td></tr>
+            <tr><td>15</td><td><code>BLA</code></td><td>背光正极</td></tr>
+            <tr><td>16</td><td><code>BLK</code></td><td>背光负极</td></tr>
+          </tbody>
+        </table>
+        <div class="tip" style="margin-top:10px"><b>只用写、不读，R/W 保持 0 即可</b>本项目驱动没有用忙检测（用延时代替），每次写操作都把 R/W 置 0；也可以把 R/W 引脚直接接地，进一步省掉一根 I/O。</div>
+      </div>
+      <div class="card" style="padding:14px">
+        <h3>89C52 接线（本项目的接法）</h3>
+        <table class="tbl" style="margin:6px 0 0">
+          <colgroup><col style="width:44%"><col style="width:26%"><col style="width:30%"></colgroup>
+          <thead><tr><th>LCD1602</th><th>接法</th><th>89C52</th></tr></thead>
+          <tbody>
+            <tr><td><code>RS</code>（4）</td><td>→</td><td><code>P2.6</code></td></tr>
+            <tr><td><code>R/W</code>（5）</td><td>→</td><td><code>P2.5</code>（本驱动置 0）</td></tr>
+            <tr><td><code>E</code>（6）</td><td>→</td><td><code>P2.7</code></td></tr>
+            <tr><td><code>D0~D7</code>（7~14）</td><td>→</td><td><code>P0.0~P0.7</code></td></tr>
+            <tr><td><code>VSS/BLK</code>（1/16）</td><td>→</td><td>GND</td></tr>
+            <tr><td><code>VDD</code>（2）</td><td>→</td><td>+5V</td></tr>
+            <tr><td><code>VL</code>（3）</td><td>→</td><td>10K 电位器分压</td></tr>
+            <tr><td><code>BLA</code>（15）</td><td>→</td><td>+5V（串 10Ω 限流）</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:12.5px;color:var(--faint);margin:8px 0 0">P0 口是开漏输出，做数据口时通常需要外接 10K 上拉电阻到 +5V。</p>
+      </div>
+    </div>
+    <div class="card" style="padding:16px">
+      <h3>接线示意图</h3>
+      <svg viewBox="0 0 900 260" role="img" aria-label="89C52 与 LCD1602 接线示意图" style="width:100%;height:auto;max-width:860px;display:block;margin:0 auto">
+        <rect x="10" y="20" width="220" height="220" rx="10" fill="#132A1C" stroke="#3FE08A" stroke-width="1.5"/>
+        <text x="120" y="50" text-anchor="middle" fill="#E9F6ED" font-size="15" font-weight="bold" font-family="Consolas,monospace">89C52</text>
+        <g font-family="Consolas,monospace" font-size="12" fill="#9CBFAB">
+          <text x="30" y="92">P2.6 = RS</text>
+          <text x="30" y="120">P2.5 = R/W</text>
+          <text x="30" y="148">P2.7 = E</text>
+          <text x="30" y="186">P0.0 ~ P0.7</text>
+          <text x="30" y="214">= D0 ~ D7</text>
+        </g>
+        <rect x="670" y="20" width="220" height="220" rx="10" fill="#132A1C" stroke="#3FE08A" stroke-width="1.5"/>
+        <text x="780" y="50" text-anchor="middle" fill="#E9F6ED" font-size="15" font-weight="bold" font-family="Consolas,monospace">LCD1602</text>
+        <g font-family="Consolas,monospace" font-size="12" fill="#9CBFAB">
+          <text x="690" y="92">RS(4)</text>
+          <text x="690" y="120">R/W(5)</text>
+          <text x="690" y="148">E(6)</text>
+          <text x="690" y="186">D0~D7</text>
+          <text x="690" y="214">(7~14)</text>
+        </g>
+        <g stroke="#FFCB6B" stroke-width="2">
+          <path d="M230 82 C 400 82, 500 82, 670 82" fill="none"/>
+          <path d="M230 110 C 400 110, 500 110, 670 110" fill="none" stroke-dasharray="5 4"/>
+          <path d="M230 138 C 400 138, 500 138, 670 138" fill="none"/>
+          <path d="M230 196 C 400 196, 500 196, 670 196" fill="none"/>
+        </g>
+        <g fill="#FFCB6B" font-family="Consolas,monospace" font-size="11">
+          <circle cx="450" cy="82" r="9"/><text x="450" y="86" text-anchor="middle" fill="#0B1610">R</text>
+          <circle cx="450" cy="110" r="9"/><text x="450" y="114" text-anchor="middle" fill="#0B1610">W</text>
+          <circle cx="450" cy="138" r="9"/><text x="450" y="142" text-anchor="middle" fill="#0B1610">E</text>
+          <text x="450" y="226" text-anchor="middle">8 根数据线 D0~D7</text>
+        </g>
+        <g font-family="Consolas,monospace" font-size="11" fill="#6E9480">
+          <text x="450" y="52" text-anchor="middle">控制线 3 根 + 数据线 8 根</text>
+          <text x="120" y="254" text-anchor="middle">VSS→GND · VDD→+5V · VL→10K 电位器</text>
+          <text x="780" y="254" text-anchor="middle">BLA→+5V（串 10Ω）· BLK→GND</text>
+        </g>
+      </svg>
+      <p style="font-size:12.5px;color:var(--faint);margin:10px 0 0">示意图仅表达逻辑连接关系，不代表真实电路走线；P0 口建议外接 10K 上拉电阻。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 03 显示原理 ===== -->
+<section class="sec" id="s3">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">显示原理：DDRAM 地址映射</h2></div>
+    <p class="sec-sub">HD44780 内部有 80 字节的显示数据 RAM（DDRAM）。每写一个字节进去，控制器就把它当作一个字符码，从字模库中取出点阵画到屏幕上。屏幕上的第 1 行对应 DDRAM 地址 0x00~0x0F，第 2 行对应 0x40~0x4F（后面的 0x10~0x27、0x50~0x67 是屏幕外的缓冲区，一般用不到）。</p>
+    <div class="card" style="padding:16px">
+      <h3>点一点：屏幕位置 ↔ DDRAM 地址</h3>
+      <div class="ddr-cap">
+        <span><span style="width:14px;height:14px;border-radius:3px;background:var(--card2);border:1px solid var(--line);display:inline-block"></span>屏幕可见区</span>
+        <span><span style="width:14px;height:14px;border-radius:3px;background:var(--card2);border:1px solid var(--line);opacity:.38;display:inline-block"></span>屏幕外缓冲区（0x10~0x27 / 0x50~0x67）</span>
+        <span>点击任意格子查看地址与设置指令</span>
+      </div>
+      <div class="ddr" id="ddrMap"></div>
+      <div class="ddr-read" id="ddrRead">点击上方任意格子，这里会显示它的 DDRAM 地址和对应的"设置位置"指令。</div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>地址计算公式</h3>
+        <div class="code"><pre style="white-space:pre-wrap"><span class="kw">第 1 行</span> DDRAM 地址 = 0x00 + (列 - 1)     <span class="cm">// 列 1~16</span>
+<span class="kw">第 2 行</span> DDRAM 地址 = 0x40 + (列 - 1)
+
+<span class="kw">设置位置指令</span> = 0x80 | DDRAM 地址     <span class="cm">// 指令 8（DDRAM 地址设置）</span></pre></div>
+        <p style="font-size:13.5px;color:var(--muted)">指令码的最高位 DB7 固定为 1 表示"设置 DDRAM 地址"，低 7 位就是目标地址。例如：第 2 行第 5 列 → 地址 0x44 → 指令 0xC4。</p>
+      </div>
+      <div class="card">
+        <h3>CGROM / CGRAM 是什么</h3>
+        <p><b style="color:var(--green)">CGROM（字符发生器 ROM）</b>：出厂固化的字模表。写 0x30~0x39 显示数字 0~9，写 0x41~0x5A 显示大写 A~Z，写 0x20 是空格。对照表见项目目录里的 <code style="color:var(--cyan)">LCD1602字模.png</code>。</p>
+        <p><b style="color:var(--green)">CGRAM（字符发生器 RAM）</b>：用户可以自定义 8 个字符（地址 0x00~0x07），用于显示中文、箭头等特殊图形。需要用"设置 CGRAM 地址"指令（0x40|addr）逐行写入 8 字节点阵数据。</p>
+        <div class="tip"><b>判断依据</b>屏幕显示的是字符码，不是点阵——所以想让某位置显示某个字符，只需把它的 ASCII 码写进对应 DDRAM 地址。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 04 指令系统 ===== -->
+<section class="sec" id="s4">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">指令系统：会这 5 条就够了</h2></div>
+    <p class="sec-sub">HD44780 的指令集有十几条，但点亮屏幕、显示字符，绝大多数场景只需要下面 5 条。发送指令时 RS=0，发送数据时 RS=1；两者都靠 E 引脚一个"高→低"脉冲完成锁存。</p>
+    <div class="card" style="padding:14px">
+      <table class="tbl" style="margin:4px 0 0">
+        <colgroup><col style="width:16%"><col style="width:16%"><col style="width:52%"><col style="width:16%"></colgroup>
+        <thead><tr><th>指令码</th><th>二进制</th><th>作用</th><th>执行时间</th></tr></thead>
+        <tbody>
+          <tr><td><code>0x38</code></td><td><code>0011 1000</code></td><td>功能设置：8 位数据接口、两行显示、5×7 点阵</td><td>40µs</td></tr>
+          <tr><td><code>0x0C</code></td><td><code>0000 1100</code></td><td>显示开关：开显示、关光标、关闪烁（D=1 C=0 B=0）</td><td>40µs</td></tr>
+          <tr><td><code>0x06</code></td><td><code>0000 0110</code></td><td>输入方式：每写一个字符后地址指针自动 +1，画面不动</td><td>40µs</td></tr>
+          <tr><td><code>0x01</code></td><td><code>0000 0001</code></td><td>清屏：DDRAM 全部清零、地址指针归零、光标复位</td><td>1.64ms</td></tr>
+          <tr><td><code>0x80 | 地址</code></td><td><code>1AAA AAAA</code></td><td>设置 DDRAM 地址（光标/写入位置），低 7 位为地址</td><td>40µs</td></tr>
+        </tbody>
+      </table>
+      <div class="tip"><b>读写时序</b>写指令：RS=0, R/W=0，数据放到 D0~D7，E 拉高 → 稍等 → E 拉低，数据在 E 的下降沿被锁存。本项目驱动在 E 高/低电平之间各延时 1ms，用"延时"代替了"忙标志检测"。</div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>显示开关 0x0C 拆解</h3>
+        <div class="code"><pre><span class="nu">0x0C</span> = <span class="nu">0000 1100</span>
+            <span class="cm">└┬┘│└┬┘</span>
+             │ │  └─ B = 0  光标不闪烁
+             │ └──── C = 0  不显示光标
+             └────── D = 1  显示开</pre></div>
+        <p style="font-size:13.5px;color:var(--muted)">想显示光标就把 0x0C 改成 0x0E，想要闪烁光标改成 0x0F——这就是 0x0C 系指令的规律。</p>
+      </div>
+      <div class="card">
+        <h3>其他常用指令（了解即可）</h3>
+        <table class="tbl" style="margin:6px 0 0">
+          <colgroup><col style="width:22%"><col style="width:78%"></colgroup>
+          <thead><tr><th>指令码</th><th>作用</th></tr></thead>
+          <tbody>
+            <tr><td><code>0x02</code></td><td>归位：地址指针归零，DDRAM 内容不变</td></tr>
+            <tr><td><code>0x18</code></td><td>整屏左移一个字符位（光标不动）</td></tr>
+            <tr><td><code>0x40|addr</code></td><td>设置 CGRAM 地址（自定义字符，0x00~0x3F）</td></tr>
+            <tr><td><code>0x10</code></td><td>光标左移一格</td></tr>
+            <tr><td><code>0x14</code></td><td>光标右移一格</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 05 初始化流程 ===== -->
+<section class="sec" id="s5">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">初始化流程：4 条指令点亮屏幕</h2></div>
+    <p class="sec-sub">上电后 LCD 处于未知状态，必须先按顺序初始化。数据手册给的是"延时 → 38H → 延时 → 38H → 延时 → 38H → …"的严格流程；本项目驱动用更简洁的写法——因为每次写指令内部都延时 1ms，所以只发 4 条指令就能完成初始化。点"下一步"逐步看。</p>
+    <div class="card" style="padding:16px">
+      <div class="stepbar">
+        <button class="btn" id="stepNext">下一步</button>
+        <button class="btn btn-plain" id="stepReset">重置</button>
+        <span style="font-family:var(--mono);color:var(--muted);font-size:13px" id="stepHint">点击"下一步"开始</span>
+      </div>
+      <div class="stepper" id="stepper">
+        <div class="step" data-i="0">
+          <span class="step-dot"></span>
+          <div><span class="cmd">0x38</span><div class="explain">功能设置：8 位数据接口、2 行显示、5×7 点阵。这是最基本的配置，必须最先发。</div><div class="bin">0011 1000</div></div>
+        </div>
+        <div class="step" data-i="1">
+          <span class="step-dot"></span>
+          <div><span class="cmd">0x0C</span><div class="explain">显示开关控制：开显示（D=1）、关光标（C=0）、关闪烁（B=0）。不发这条屏幕会一直暗着。</div><div class="bin">0000 1100</div></div>
+        </div>
+        <div class="step" data-i="2">
+          <span class="step-dot"></span>
+          <div><span class="cmd">0x06</span><div class="explain">输入方式设置：写完一个字符地址自动 +1、光标右移，画面不整体平移。这样连续写字符串就能从左往右排开。</div><div class="bin">0000 0110</div></div>
+        </div>
+        <div class="step" data-i="3">
+          <span class="step-dot"></span>
+          <div><span class="cmd">0x01</span><div class="explain">清屏：把所有显示内容清掉、地址指针归零。此时屏幕亮且空白，可以开始写内容了。</div><div class="bin">0000 0001</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding:16px">
+      <h3>数据手册的完整初始化步骤（对比）</h3>
+      <div class="code"><pre><span class="cm">// 数据手册（SMC1602A）推荐的复位流程：</span>
+延时 <span class="nu">15ms</span>            <span class="cm">// 上电稳定</span>
+写指令 <span class="nu">0x38</span>（不检测忙）   <span class="cm">// 8 位、2 行、5×7</span>
+延时 <span class="nu">5ms</span>
+写指令 <span class="nu">0x38</span>（不检测忙）
+延时 <span class="nu">5ms</span>
+写指令 <span class="nu">0x38</span>（不检测忙）
+<span class="cm">// —— 此后每次操作都需检测忙标志（STA7）或加足够延时 ——</span>
+写指令 <span class="nu">0x38</span>   <span class="cm">// 功能设置</span>
+写指令 <span class="nu">0x08</span>   <span class="cm">// 显示关闭</span>
+写指令 <span class="nu">0x01</span>   <span class="cm">// 清屏</span>
+写指令 <span class="nu">0x06</span>   <span class="cm">// 光标移动设置</span>
+写指令 <span class="nu">0x0C</span>   <span class="cm">// 显示开及光标设置</span></pre></div>
+      <div class="tip"><b>为什么本驱动可以只发 4 条？</b>因为每次写指令都自带 1ms 延时，已经满足了"两条指令之间必须等待"的要求；省去重复的 0x38 与 0x08，是因为它们的最终效果由后面的 0x0C/0x06 覆盖。新手学习时先按 4 条简化版理解，遇到个别屏不稳定再退回手册完整流程。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 06 驱动代码 ===== -->
+<section class="sec" id="s6">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">驱动代码逐块讲解</h2></div>
+    <p class="sec-sub">下面是本项目 <code style="color:var(--cyan)">Lcd1602.c</code> 的完整逻辑，按功能拆成 5 块。驱动一共就做两件事：<b style="color:var(--green)">写指令</b>（告诉液晶"做什么"）和<b style="color:var(--green)">写数据</b>（告诉液晶"显示什么"），其它函数都是在这两个基础动作上封装。</p>
+
+    <div class="card" style="padding:16px">
+      <h3>① 引脚定义</h3>
+      <div class="code"><pre><span class="kw">sbit</span> LCD_RS = P2 ^ <span class="nu">6</span>;   <span class="cm">// 数据/命令选择</span>
+<span class="kw">sbit</span> LCD_RW = P2 ^ <span class="nu">5</span>;   <span class="cm">// 读/写选择（只写，恒为 0）</span>
+<span class="kw">sbit</span> LCD_EN = P2 ^ <span class="nu">7</span>;   <span class="cm">// 使能脉冲</span>
+<span class="kw">#define</span> LCD_DataPort P0    <span class="cm">// 8 位数据口</span></pre></div>
+      <p style="font-size:13.5px;color:var(--muted)">sbit 是 C51 的关键字，用来把某一位引脚起个名字。数据口用宏定义，之后换接线只需要改这一行。</p>
+    </div>
+
+    <div class="card" style="padding:16px">
+      <h3>② 写指令 / 写数据：整个驱动的核心</h3>
+      <div class="code"><pre><span class="kw">void</span> <span class="kw">LCD_WriteCommand</span>(<span class="kw">unsigned</span> <span class="kw">char</span> command)
+{
+    LCD_RS = <span class="nu">0</span>;            <span class="cm">// 0 = 发送指令</span>
+    LCD_RW = <span class="nu">0</span>;            <span class="cm">// 0 = 写操作</span>
+    LCD_DataPort = command;  <span class="cm">// 指令码放到数据线上</span>
+    LCD_EN = <span class="nu">1</span>;            <span class="cm">// E 拉高</span>
+    Delayms(<span class="nu">1</span>);          <span class="cm">// 等待电平稳定</span>
+    LCD_EN = <span class="nu">0</span>;            <span class="cm">// E 拉低：下降沿锁存，指令生效</span>
+    Delayms(<span class="nu">1</span>);          <span class="cm">// 给液晶执行指令的时间</span>
+}
+
+<span class="kw">void</span> <span class="kw">LCD_WriteData</span>(<span class="kw">unsigned</span> <span class="kw">char</span> Data)
+{
+    LCD_RS = <span class="nu">1</span>;            <span class="cm">// 1 = 发送数据</span>
+    LCD_RW = <span class="nu">0</span>;
+    LCD_DataPort = Data;
+    LCD_EN = <span class="nu">1</span>;
+    Delayms(<span class="nu">1</span>);
+    LCD_EN = <span class="nu">0</span>;        <span class="cm">// 同样的 E 脉冲</span>
+    Delayms(<span class="nu">1</span>);
+}</pre></div>
+      <p style="font-size:13.5px;color:var(--muted)">两者唯一区别就是 <b style="color:var(--green)">RS 电平</b>：RS=0 表示这是指令，RS=1 表示这是要显示的字符数据。E 的"高 → 低"脉冲是锁存信号，两次 Delayms(1) 保证时序满足手册要求。</p>
+    </div>
+
+    <div class="card" style="padding:16px">
+      <h3>③ 初始化 + 设置光标位置</h3>
+      <div class="code"><pre><span class="kw">void</span> <span class="kw">LCD_Init</span>()
+{
+    LCD_WriteCommand(<span class="nu">0x38</span>);  <span class="cm">// 8 位、2 行、5×7</span>
+    LCD_WriteCommand(<span class="nu">0x0c</span>);  <span class="cm">// 开显示、关光标</span>
+    LCD_WriteCommand(<span class="nu">0x06</span>);  <span class="cm">// 写后地址自动 +1</span>
+    LCD_WriteCommand(<span class="nu">0x01</span>);  <span class="cm">// 清屏</span>
+}
+
+<span class="kw">void</span> <span class="kw">LCD_SetCursor</span>(<span class="kw">unsigned</span> <span class="kw">char</span> Line, <span class="kw">unsigned</span> <span class="kw">char</span> Column)
+{
+    <span class="kw">if</span> (Line == <span class="nu">1</span>)
+        LCD_WriteCommand(<span class="nu">0x80</span> | (Column - <span class="nu">1</span>));        <span class="cm">// 第 1 行：0x00 起</span>
+    <span class="kw">else</span>
+        LCD_WriteCommand(<span class="nu">0x80</span> | (Column - <span class="nu">1</span>) + <span class="nu">0x40</span>);  <span class="cm">// 第 2 行：0x40 起</span>
+}</pre></div>
+      <p style="font-size:13.5px;color:var(--muted)">注意列号从 1 开始（对人友好），内部减 1 转成 0 基地址。第 2 行整体偏移 0x40，对应第 03 节讲的地址映射：<code style="color:var(--cyan)">0x80 | (Column-1) + 0x40</code>，加法优先于按位或，等价于 <code style="color:var(--cyan)">0x80 | ((Column-1)+0x40)</code>。</p>
+    </div>
+
+    <div class="card" style="padding:16px">
+      <h3>④ 显示字符与字符串</h3>
+      <div class="code"><pre><span class="kw">void</span> <span class="kw">LCD_Showchar</span>(<span class="kw">unsigned</span> <span class="kw">char</span> Line, <span class="kw">unsigned</span> <span class="kw">char</span> Column, <span class="kw">unsigned</span> <span class="kw">char</span> Char)
+{
+    LCD_SetCursor(Line, Column);   <span class="cm">// 先定位</span>
+    LCD_WriteData(Char);           <span class="cm">// 再写字符码</span>
+}
+
+<span class="kw">void</span> <span class="kw">LCD_ShowString</span>(<span class="kw">unsigned</span> <span class="kw">char</span> Line, <span class="kw">unsigned</span> <span class="kw">char</span> Column, <span class="kw">unsigned</span> <span class="kw">char</span> String[])
+{
+    <span class="kw">unsigned</span> <span class="kw">char</span> i;
+    LCD_SetCursor(Line, Column);
+    <span class="kw">for</span> (i = <span class="nu">0</span>; String[i] != <span class="nu">0</span>; i++)   <span class="cm">// 遇 '\0' 结束</span>
+        LCD_WriteData(String[i]);              <span class="cm">// 地址自动 +1，字符从左往右排开</span>
+}</pre></div>
+      <p style="font-size:13.5px;color:var(--muted)">字符串以 <code style="color:var(--cyan)">\0</code> 结尾，所以 <code style="color:var(--cyan)">String[i] != 0</code> 就是"还没写完"的判断。因为初始化设了 0x06（地址自动 +1），连续写数据就会自动往右走。</p>
+    </div>
+
+    <div class="card" style="padding:16px">
+      <h3>⑤ 显示数字：先把数拆成单个字符</h3>
+      <div class="code"><pre><span class="kw">int</span> <span class="kw">LCD_Pow</span>(<span class="kw">int</span> X, <span class="kw">int</span> Y)   <span class="cm">// 自己实现的 X 的 Y 次方</span>
+{
+    <span class="kw">unsigned</span> <span class="kw">char</span> i;
+    <span class="kw">int</span> Result = <span class="nu">1</span>;
+    <span class="kw">for</span> (i = <span class="nu">0</span>; i &lt; Y; i++) Result *= X;
+    <span class="kw">return</span> Result;
+}
+
+<span class="kw">void</span> <span class="kw">LCD_ShowNum</span>(<span class="kw">unsigned</span> <span class="kw">char</span> Line, <span class="kw">unsigned</span> <span class="kw">char</span> Column,
+                 <span class="kw">unsigned</span> <span class="kw">char</span> Number, <span class="kw">int</span> Length)
+{
+    <span class="kw">unsigned</span> <span class="kw">char</span> i;
+    LCD_SetCursor(Line, Column);
+    <span class="kw">for</span> (i = Length; i &gt; <span class="nu">0</span>; i--)
+        <span class="cm">// 逐位取出数字，加 0x30 转成 ASCII 码后写入</span>
+        LCD_WriteData(<span class="nu">0x30</span> + Number / LCD_Pow(<span class="nu">10</span>, i - <span class="nu">1</span>) % <span class="nu">10</span>);
+}</pre></div>
+      <p style="font-size:13.5px;color:var(--muted)">数字 66 在屏幕上显示的是字符 '6' 和 '6'，它们的 ASCII 码正好是 0x30+6=0x36。所以先把 66 拆成十位 6、个位 6，再各加 0x30 写进去。Length 表示显示几位（不足高位补 0）。</p>
+      <p style="font-size:13.5px;color:var(--muted)">同理封装：<code style="color:var(--cyan)">LCD_ShowSignedNum</code> 先写 '+'/'-' 再显示绝对值；<code style="color:var(--cyan)">LCD_ShowHexNum</code> 按 16 进制拆位（大于 9 补 'A'~'F'）；<code style="color:var(--cyan)">LCD_ShowBinNumber</code> 按 2 进制拆位。</p>
+    </div>
+
+    <div class="warn"><b>本项目的一个隐藏"地雷"（建议改掉）</b>Lcd1602.h 里声明的是 <code style="color:var(--cyan)">LCD_ShowNum(Line, Column, Length, Number)</code>（长度在前），而 Lcd1602.c 里定义的是 <code style="color:var(--cyan)">LCD_ShowNum(Line, Column, Number, Length)</code>（数字在前）。C 语言不检查形参名字，所以能编译通过，main.c 里 <code style="color:var(--cyan)">LCD_ShowNum(1,1,66,2)</code> 恰好"数字=66、长度=2"结果正确；但如果按头文件理解去调用 <code style="color:var(--cyan)">LCD_ShowNum(1,1,2,66)</code>，就会变成"数字=2、长度=66"直接出错。建议把 .c 和 .h 的参数顺序统一（推荐：长度在数字前面）。</div>
+  </div>
+</section>
+
+<!-- ===== 07 使用示例 ===== -->
+<section class="sec" id="s7">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">07</span><h2 class="sec-title">使用示例：跑一遍 main.c</h2></div>
+    <p class="sec-sub">项目的 <code style="color:var(--cyan)">main.c</code> 只做了三件事：初始化，然后调 6 个显示函数。下面用虚拟屏模拟器还原它的真实效果——点任意一个函数芯片，看它写进屏幕哪个位置。</p>
+    <div class="card" style="padding:16px">
+      <h3>main.c 原始代码</h3>
+      <div class="code"><pre><span class="kw">#include</span> <span class="st">"Lcd1602.h"</span>
+<span class="kw">#include</span> <span class="st">&lt;STC89C5xRC.H&gt;</span>
+<span class="kw">void</span> <span class="kw">main</span>()
+{
+    LCD_Init();                       <span class="cm">// ① 初始化</span>
+    LCD_ShowString(<span class="nu">2</span>, <span class="nu">3</span>, <span class="st">"xmy"</span>);        <span class="cm">// ② 第2行第3列起显示字符串</span>
+    LCD_ShowNum(<span class="nu">1</span>, <span class="nu">1</span>, <span class="nu">66</span>, <span class="nu">2</span>);          <span class="cm">// 数字 66</span>
+    LCD_ShowSignedNum(<span class="nu">1</span>, <span class="nu">4</span>, -<span class="nu">33</span>, <span class="nu">2</span>);    <span class="cm">// 带符号 -33</span>
+    LCD_ShowHexNum(<span class="nu">1</span>, <span class="nu">10</span>, <span class="nu">0xa5</span>, <span class="nu">2</span>);   <span class="cm">// 十六进制 A5</span>
+    LCD_ShowBinNumber(<span class="nu">2</span>, <span class="nu">6</span>, <span class="nu">0xa5</span>, <span class="nu">8</span>); <span class="cm">// 二进制 10100101</span>
+    LCD_Showchar(<span class="nu">2</span>, <span class="nu">14</span>, <span class="nu">0xdf</span>);         <span class="cm">// 特殊字符（°）</span>
+    <span class="kw">while</span> (<span class="nu">1</span>) { }                   <span class="cm">// 保持显示</span>
+}</pre></div>
+    </div>
+    <div class="card" style="padding:16px">
+      <h3>虚拟屏模拟器</h3>
+      <div class="lcd" style="padding:14px;margin:4px 0 12px">
+        <div class="lcd-panel" id="simPanel" aria-label="虚拟 LCD1602 模拟屏"></div>
+        <div class="lcd-cap"><span>当前：LCD_ShowString(2,3,"xmy") 等 6 个函数的组合效果</span><span id="simAddr">光标：0x00</span></div>
+      </div>
+      <div style="margin-bottom:6px">
+        <span style="color:var(--muted);font-size:13px">点函数芯片看效果（每次点击先清屏，最后一项为组合）：</span>
+      </div>
+      <div>
+        <button class="chip" data-fn="showstring">LCD_ShowString(2,3,"xmy")</button>
+        <button class="chip" data-fn="shownum">LCD_ShowNum(1,1,66,2)</button>
+        <button class="chip" data-fn="showsigned">LCD_ShowSignedNum(1,4,-33,2)</button>
+        <button class="chip" data-fn="showhex">LCD_ShowHexNum(1,10,0xa5,2)</button>
+        <button class="chip" data-fn="showbin">LCD_ShowBinNumber(2,6,0xa5,8)</button>
+        <button class="chip" data-fn="showchar">LCD_Showchar(2,14,0xdf)</button>
+        <button class="chip" data-fn="runmain">运行 main.c（组合）</button>
+      </div>
+      <div class="code" style="margin-top:10px"><pre id="simCode" style="white-space:pre-wrap">点击上方任意芯片，这里会显示对应函数并说明它写进了哪个位置。</pre></div>
+      <div class="sim-cols" style="margin-top:12px">
+        <div>
+          <h3>自由输入</h3>
+          <div class="sim-row">
+            <label style="display:flex;align-items:center;gap:6px;min-height:44px"><input type="radio" name="simLine" value="1" checked> 第 1 行</label>
+            <label style="display:flex;align-items:center;gap:6px;min-height:44px"><input type="radio" name="simLine" value="2"> 第 2 行</label>
+          </div>
+          <div class="sim-row">
+            <input class="input" id="simInput" type="text" maxlength="16" placeholder="输入字符，如 Hello" aria-label="要显示的字符">
+            <button class="btn" id="simWrite">写入</button>
+            <button class="btn btn-plain" id="simClear">清屏</button>
+          </div>
+          <p style="font-size:12.5px;color:var(--faint);margin:8px 0 0">只支持 CGROM 里有的字符（数字、字母、符号）；中文字符无法显示。</p>
+        </div>
+        <div>
+          <h3>效果解析</h3>
+          <div style="font-size:13.5px;color:var(--muted);line-height:2" id="simExplain">组合效果 = main.c 6 条语句依次执行：<br>第 1 行：66 · -33 · A5<br>第 2 行：xmy · 10100101 · °</div>
+        </div>
+      </div>
+      <div class="tip" style="margin-top:12px"><b>0xDF 是什么符号？</b>0xDF 在多数 HD44780 兼容屏的字模表中对应 °（度数符号），所以常用来显示温度。不同厂家略有差异，以项目目录里 <code style="color:var(--cyan)">LCD1602字模.png</code> 为准。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 08 常见问题 ===== -->
+<section class="sec" id="s8">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">08</span><h2 class="sec-title">常见问题排查清单</h2></div>
+    <div class="card" style="padding:16px">
+      <div class="faq-item"><b>屏幕全暗，什么都没有</b><p>① 对比度：VL 电位器没调好是头号原因，慢慢旋转到出现黑影；② 检查 VSS/VDD 是否接反或虚焊；③ 检查是否执行了 0x0C（开显示）。</p></div>
+      <div class="faq-item"><b>屏幕亮但全是方块/花屏</b><p>初始化时序不对，或数据口接错位（如 D0~D7 接反）。对照第 05 节流程重新初始化，检查 P0.0~P0.7 与 D0~D7 一一对应。</p></div>
+      <div class="faq-item"><b>只有一排方块，没有字符</b><p>对比度过强（方块全黑）或过弱（字符看不见）。调整 VL 电位器，让字符清晰、背景干净。</p></div>
+      <div class="faq-item"><b>显示内容乱跳 / 重复</b><p>两条指令之间延时不够，液晶没执行完就被打断。把写指令/写数据里的 Delayms 加大，或改用忙标志检测（读 STA7）。</p></div>
+      <div class="faq-item"><b>想显示中文/箭头</b><p>CGROM 没有中文字模。用 CGRAM 自定义字符：先把 5×8 点阵数据按行写入 CGRAM 地址（0x40|addr），再在 DDRAM 里写 0x00~0x07 引用它，最多 8 个。</p></div>
+      <div class="faq-item"><b>显示错位，内容跑到第二行</b><p>第 1 行显示超 16 个字符就会溢出到第 2 行（地址 0x0F 之后是 0x40 区）。字符串按行长度 16 截断，或写满 16 个后换行显示。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 页脚 ===== -->
+<footer class="footer">
+  <div class="wrap">
+    <b>参考资料</b>（均为项目目录内文件）：<code>project/src/Lcd1602.c · Lcd1602.h · main.c</code>、<code>LCD1602数据手册.pdf</code>（SMC1602A）、<code>LCD1602指令集.png</code>、<code>LCD1602字模.png</code>。<br>
+    教学用 89C52 / STC89C5xRC 8 位并行接法示例，实际接线请以你的开发板原理图为准。
+  </div>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+  function $(id){ return document.getElementById(id); }
+  function hex2(n){ n = n & 0xFF; return ('0' + n.toString(16).toUpperCase()).slice(-2); }
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ===== 虚拟 LCD 组件 ===== */
+  function buildLcd(panelId){
+    var panel = $(panelId);
+    var rows = [];
+    for (var r = 0; r < 2; r++){
+      var row = document.createElement('div');
+      row.className = 'lcd-row';
+      var cells = [];
+      for (var c = 0; c < 16; c++){
+        var d = document.createElement('div');
+        d.className = 'lcd-cell';
+        d.textContent = ' ';
+        row.appendChild(d);
+        cells.push(d);
+      }
+      panel.appendChild(row);
+      rows.push(cells);
+    }
+    return rows;
+  }
+  function clearLcd(rows){
+    for (var r = 0; r < 2; r++)
+      for (var c = 0; c < 16; c++){
+        rows[r][c].textContent = ' ';
+        rows[r][c].classList.remove('on');
+      }
+  }
+
+  /* ===== 首屏打字动画 ===== */
+  var heroRows = buildLcd('heroPanel');
+  var heroScripts = [
+    { line: 0, text: 'Hello, LCD1602!' },
+    { line: 1, text: 'Line2: 0x40..0x4F' },
+    { line: 0, text: 'Addr: 0x80|col-1' }
+  ];
+  var hIdx = 0, hChar = 0, hPhase = 'type';
+  function heroAddr(line, idx){ return line === 0 ? idx : 0x40 + idx; }
+  function heroStart(){
+    clearLcd(heroRows);
+    if (reduced){
+      var s0 = heroScripts[0];
+      for (var i = 0; i < s0.text.length; i++){ heroRows[s0.line][i].textContent = s0.text[i]; heroRows[s0.line][i].classList.add('on'); }
+      $('heroAddr').textContent = '0x' + hex2(heroAddr(s0.line, s0.text.length - 1));
+      return;
+    }
+    function tick(){
+      var s = heroScripts[hIdx];
+      if (hPhase === 'type'){
+        if (hChar < s.text.length){
+          var cell = heroRows[s.line][hChar];
+          cell.textContent = s.text[hChar];
+          cell.classList.add('on');
+          $('heroAddr').textContent = '0x' + hex2(heroAddr(s.line, hChar));
+          hChar++;
+          setTimeout(tick, 110);
+        } else { hPhase = 'hold'; setTimeout(tick, 1400); }
+      } else if (hPhase === 'hold'){ hPhase = 'clear'; clearLcd(heroRows); setTimeout(tick, 260); }
+      else {
+        hIdx = (hIdx + 1) % heroScripts.length;
+        hChar = 0; hPhase = 'type';
+        setTimeout(tick, 60);
+      }
+    }
+    tick();
+  }
+  heroStart();
+
+  /* ===== DDRAM 地址映射 ===== */
+  var ddrEl = $('ddrMap');
+  (function buildDdr(){
+    for (var line = 1; line <= 2; line++){
+      for (var col = 1; col <= 16; col++){
+        var d = document.createElement('div');
+        d.className = 'ddr-cell';
+        d.setAttribute('role','button');
+        d.setAttribute('tabindex','0');
+        d.setAttribute('aria-label','第'+line+'行第'+col+'列');
+        var p = document.createElement('span'); p.className = 'p'; p.textContent = 'C' + col;
+        var a = document.createElement('span'); a.className = 'a'; a.textContent = '0x' + hex2(line === 1 ? col - 1 : 0x40 + col - 1);
+        d.appendChild(p); d.appendChild(a);
+        d.dataset.line = line; d.dataset.col = col;
+        var show = function(){ pick(d, line, col); };
+        d.addEventListener('click', show);
+        d.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(); } });
+        ddrEl.appendChild(d);
+      }
+    }
+  })();
+  function pick(d, line, col){
+    var cells = ddrEl.querySelectorAll('.ddr-cell');
+    for (var i = 0; i < cells.length; i++) cells[i].classList.remove('sel');
+    d.classList.add('sel');
+    var addr = line === 1 ? col - 1 : 0x40 + col - 1;
+    $('ddrRead').textContent = '第 ' + line + ' 行第 ' + col + ' 列 → DDRAM 地址 0x' + hex2(addr) +
+      ' → 设置位置指令 0x' + hex2(0x80 | addr) + '（即 0x80 | 地址）';
+  }
+
+  /* ===== 初始化步骤演示 ===== */
+  var steps = document.querySelectorAll('#stepper .step');
+  var stepState = -1;
+  var stepHints = [
+    '点击"下一步"开始',
+    '第 1 条 · 0x38：8 位数据接口、2 行显示、5×7 点阵',
+    '第 2 条 · 0x0C：打开显示（D=1）、关光标、关闪烁',
+    '第 3 条 · 0x06：写入后地址自动 +1，字符串才能连续排列',
+    '第 4 条 · 0x01：清屏，屏幕亮起，准备显示',
+    '完成！4 条指令后即可调用显示函数'
+  ];
+  function setStep(i){
+    stepState = i;
+    for (var k = 0; k < steps.length; k++){
+      if (k <= i) steps[k].classList.add('cur'); else steps[k].classList.remove('cur');
+    }
+    $('stepHint').textContent = stepHints[i + 1];
+    if (i >= steps.length - 1) $('stepNext').disabled = true;
+  }
+  $('stepNext').addEventListener('click', function(){ if (stepState < steps.length - 1) setStep(stepState + 1); });
+  $('stepReset').addEventListener('click', function(){
+    for (var k = 0; k < steps.length; k++) steps[k].classList.remove('cur');
+    stepState = -1;
+    $('stepHint').textContent = stepHints[0];
+    $('stepNext').disabled = false;
+  });
+
+  /* ===== 虚拟屏模拟器 ===== */
+  var simRows = buildLcd('simPanel');
+  var simBuf = [new Array(16).fill(' '), new Array(16).fill(' ')];
+  var lastWrite = { line: 1, col: 1 };
+  function renderSim(){
+    for (var r = 0; r < 2; r++)
+      for (var c = 0; c < 16; c++){
+        var ch = simBuf[r][c];
+        simRows[r][c].textContent = ch === ' ' ? ' ' : ch;
+        if (ch === ' ') simRows[r][c].classList.remove('on'); else simRows[r][c].classList.add('on');
+      }
+    var addr = lastWrite.line === 1 ? lastWrite.col - 1 : 0x40 + lastWrite.col - 1;
+    $('simAddr').textContent = '最后写入：第' + lastWrite.line + '行第' + lastWrite.col + '列 → 地址 0x' + hex2(addr);
+  }
+  function clearSim(){
+    simBuf = [new Array(16).fill(' '), new Array(16).fill(' ')];
+    lastWrite = { line: 1, col: 1 };
+    renderSim();
+  }
+  function putStr(line, col, str){
+    var idx = line - 1;
+    for (var i = 0; i < str.length; i++){
+      var cpos = col - 1 + i;
+      if (cpos < 16) simBuf[idx][cpos] = str[i];
+      lastWrite = { line: line, col: Math.min(cpos + 1, 16) };
+    }
+  }
+  function showFn(fn){
+    var chips = document.querySelectorAll('.chip');
+    for (var i = 0; i < chips.length; i++) chips[i].classList.remove('act');
+    var cur = document.querySelector('.chip[data-fn="' + fn + '"]');
+    if (cur) cur.classList.add('act');
+  }
+  var fnMap = {
+    showstring: { code: 'LCD_ShowString(2, 3, "xmy");   // 第2行第3列', run: function(){ putStr(2, 3, 'xmy'); }, note: '字符串从左往右写，列 3~5 填入 x、m、y。' },
+    shownum: { code: 'LCD_ShowNum(1, 1, 66, 2);   // 数字 66，2 位', run: function(){ putStr(1, 1, '66'); }, note: '66 被拆成 \'6\'、\'6\' 两个 ASCII 字符，占列 1~2。' },
+    showsigned: { code: 'LCD_ShowSignedNum(1, 4, -33, 2);   // 带符号 -33', run: function(){ putStr(1, 4, '-33'); }, note: '先写 \'-\'，再写 2 位数字，占列 4~6。' },
+    showhex: { code: 'LCD_ShowHexNum(1, 10, 0xa5, 2);   // 十六进制 A5', run: function(){ putStr(1, 10, 'A5'); }, note: '0xA5 按 16 进制拆成 A、5 两个字符，占列 10~11。' },
+    showbin: { code: 'LCD_ShowBinNumber(2, 6, 0xa5, 8);   // 二进制 10100101', run: function(){ putStr(2, 6, '10100101'); }, note: '0xA5 的 8 位二进制展开，占列 6~13。' },
+    showchar: { code: 'LCD_Showchar(2, 14, 0xdf);   // 特殊字符 °', run: function(){ putStr(2, 14, '\u00B0'); }, note: '0xDF 在多数兼容屏字模表中是 °（度数符号）。' },
+    runmain: { code: '// main.c 依次执行 6 条语句的组合效果', run: function(){ clearSim(); putStr(1, 1, '66'); putStr(1, 4, '-33'); putStr(1, 10, 'A5'); putStr(2, 3, 'xmy'); putStr(2, 6, '10100101'); putStr(2, 14, '\u00B0'); }, note: '第 1 行：66 -33 A5；第 2 行：xmy 10100101 °。' }
+  };
+  document.querySelectorAll('.chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      var fn = chip.dataset.fn;
+      var m = fnMap[fn];
+      if (!m) return;
+      showFn(fn);
+      clearSim();
+      m.run();
+      renderSim();
+      $('simCode').textContent = m.code;
+      $('simExplain').textContent = m.note;
+    });
+  });
+  $('simWrite').addEventListener('click', function(){
+    var val = $('simInput').value;
+    if (!val){ $('simExplain').textContent = '请输入要显示的字符。'; return; }
+    if (val.length > 16) val = val.slice(0, 16);
+    var line = parseInt(document.querySelector('input[name="simLine"]:checked').value, 10);
+    showFn('none');
+    var chips = document.querySelectorAll('.chip');
+    for (var i = 0; i < chips.length; i++) chips[i].classList.remove('act');
+    clearSim();
+    putStr(line, 1, val);
+    renderSim();
+    $('simCode').textContent = 'LCD_ShowString(' + line + ', 1, "' + val + '");   // 手动输入';
+    $('simExplain').textContent = '从第 ' + line + ' 行第 1 列开始写入，字符依次右排。超 16 个字符的部分会被截断。';
+  });
+  $('simClear').addEventListener('click', function(){
+    clearSim();
+    $('simCode').textContent = '// 已清屏';
+    $('simExplain').textContent = '屏幕已清空，可以重新演示。';
+    var chips = document.querySelectorAll('.chip');
+    for (var i = 0; i < chips.length; i++) chips[i].classList.remove('act');
+  });
+  clearSim();
+})();
+</script>
+</body>
+</html>

@@ -21,7 +21,7 @@ void Uart1_Init(void) // 4800bps@11.0592MHz
 void UART_SentByte(unsigned char Byte)
 {
     SBUF = Byte;
-    while (TI == 0)
+    while (TI = 0)
         ;   // 监视是否完成
     TI = 1; // 关闭发送
 }

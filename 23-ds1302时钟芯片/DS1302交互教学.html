@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DS1302 交互式教学 · 按难度闯关</title>
+<style>
+/* 最大兼容版：不使用 CSS 变量 / light-dark / color-mix / grid，ES5 即可运行 */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: #eef0f4; color: #1a1c1f; font: 14px/1.65 "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif; }
+#ds1302-tut { max-width: 980px; margin: 0 auto; padding: 18px 16px 40px; }
+h1 { font-size: 22px; margin: 4px 0 4px; }
+h2 { font-size: 17px; margin: 18px 0 8px; border-left: 4px solid #2b7de1; padding-left: 8px; }
+h3 { font-size: 15px; margin: 16px 0 6px; }
+p { margin: 6px 0; }
+.muted { color: #67707d; }
+.small { font-size: 12px; color: #67707d; }
+code { background: #eceff3; border-radius: 3px; padding: 1px 5px; font-family: Consolas, "Courier New", monospace; font-size: 13px; }
+pre { background: #f0f2f5; border: 1px solid #d7dae0; border-radius: 6px; padding: 10px 12px; overflow-x: auto; font-size: 12px; line-height: 1.5; }
+pre code { background: none; padding: 0; }
+pre.plain { white-space: pre-wrap; }
+.khl { background: #cfe4ff; border-radius: 3px; }
+
+/* 标签页 */
+.tabs { border-bottom: 2px solid #d7dae0; margin: 14px 0 0; padding: 0; }
+.tabs button { display: inline-block; background: none; border: none; border-bottom: 3px solid transparent; margin-bottom: -2px; padding: 8px 12px; font: inherit; color: #4a5160; cursor: pointer; }
+.tabs button:hover { color: #1a1c1f; }
+.tabs button.on { color: #2b7de1; border-bottom-color: #2b7de1; font-weight: bold; }
+.panel { display: none; padding-top: 10px; }
+.panel.on { display: block; }
+.goal { color: #67707d; font-size: 13px; background: #eef3fb; border-left: 3px solid #2b7de1; padding: 6px 10px; border-radius: 0 4px 4px 0; }
+
+/* 按钮 */
+.btn { display: inline-block; background: #fff; border: 1px solid #c3c9d4; border-radius: 5px; padding: 5px 12px; font: inherit; font-size: 13px; color: #1a1c1f; cursor: pointer; margin: 2px 4px 2px 0; vertical-align: middle; }
+.btn:hover { border-color: #2b7de1; color: #2b7de1; }
+.btn:disabled { color: #a7adb8; border-color: #d7dae0; cursor: default; }
+.btn.primary { background: #2b7de1; border-color: #2b7de1; color: #fff; }
+.btn.primary:hover { background: #256cc4; color: #fff; }
+.btn.on { background: #2b7de1; border-color: #2b7de1; color: #fff; }
+.row { margin: 8px 0; }
+.badge { display: inline-block; background: #e3ecf9; color: #205292; border-radius: 10px; padding: 2px 10px; font-size: 12px; margin-right: 6px; vertical-align: middle; }
+.badge.green { background: #e2f4e6; color: #20713a; }
+.badge.red { background: #fde8e8; color: #b02a2a; }
+
+/* 卡片/面板 */
+.box { background: #fff; border: 1px solid #d7dae0; border-radius: 8px; padding: 10px 14px; margin: 8px 0; }
+
+/* 第 1 关引脚图 */
+.chip { display: inline-block; border: 2px solid #8a93a3; border-radius: 10px; padding: 14px 12px; position: relative; background: #fff; vertical-align: top; }
+.chip .notch { position: absolute; top: -2px; left: 50%; margin-left: -18px; width: 36px; height: 12px; border: 2px solid #8a93a3; border-top: none; border-radius: 0 0 10px 10px; background: #eef0f4; }
+.chip .col { display: inline-block; vertical-align: top; }
+.chip .col button { display: block; width: 118px; margin: 4px 0; }
+.chip .mid { display: inline-block; vertical-align: middle; width: 64px; text-align: center; font-weight: bold; }
+.chipwrap { text-align: center; }
+#pin-detail { min-height: 64px; }
+
+/* 第 2 关位开关 */
+.bitbtn { min-width: 48px; text-align: center; padding: 4px 2px; }
+.bitbtn small { display: block; font-size: 11px; color: #8a93a3; font-weight: normal; }
+.cmdhex { font-size: 18px; font-family: Consolas, monospace; color: #205292; font-weight: bold; }
+table.reg { border-collapse: collapse; width: 100%; margin: 6px 0; font-size: 13px; }
+table.reg th, table.reg td { border-bottom: 1px solid #e3e6ec; padding: 5px 8px; text-align: left; }
+table.reg th { color: #67707d; font-weight: normal; border-bottom: 2px solid #d7dae0; }
+table.reg tr.hl { background: #e3f0ff; }
+table.reg code { background: none; }
+
+/* 第 3 关波形 */
+#wf-wrap { overflow-x: auto; background: #fff; border: 1px solid #d7dae0; border-radius: 8px; padding: 6px; }
+.wf-svg text { font-size: 11px; fill: #1a1c1f; font-family: "Microsoft YaHei", sans-serif; }
+.wf-svg .bitlab { fill: #8a93a3; }
+.wf-svg .bitlab.cur { fill: #1a1c1f; font-weight: bold; }
+.wf-svg .ghost { opacity: 0.14; }
+.ann { background: #fff; border: 1px solid #d7dae0; border-radius: 8px; padding: 8px 12px; margin: 8px 0; min-height: 48px; }
+.ann .txt { display: inline; }
+.count { font-size: 12px; color: #67707d; margin-top: 4px; }
+
+/* 第 4 关日志 */
+#wp-log { max-height: 140px; overflow-y: auto; }
+
+/* 测验 */
+.q { margin: 12px 0 16px; }
+.q .q-t { font-weight: bold; }
+.q button { display: block; width: auto; text-align: left; margin: 3px 0; }
+.q button.correct { color: #20713a; border-color: #2f9e44; background: #e2f4e6; }
+.q button.wrong { color: #b02a2a; border-color: #e03131; background: #fde8e8; }
+.q button:disabled { opacity: 0.55; cursor: default; }
+.q button.correct:disabled, .q button.wrong:disabled { opacity: 1; }
+.q .exp { font-size: 12px; margin: 4px 0 0; }
+.footnote { margin-top: 24px; font-size: 12px; color: #8a93a3; border-top: 1px solid #d7dae0; padding-top: 8px; }
+</style>
+</head>
+<body>
+<div id="ds1302-tut">
+  <h1>DS1302 实时时钟 · 闯关式交互教程</h1>
+  <p class="muted">C51 / STC89C52 · 按难度分 5 关 · 点击标签切换关卡，边玩边学（兼容版：支持老内核浏览器）</p>
+
+  <div class="tabs" id="tabs">
+    <button type="button" data-panel="lv1" class="on">★ 入门 · 认识与接线</button>
+    <button type="button" data-panel="lv2">★★ 基础 · 命令字节</button>
+    <button type="button" data-panel="lv3">★★★ 进阶 · 通信时序</button>
+    <button type="button" data-panel="lv4">★★★★ 高级 · 陷阱实验室</button>
+    <button type="button" data-panel="lv5">★★★★★ 实战 · 代码与测验</button>
+  </div>
+
+  <!-- ============ 第 1 关 ============ -->
+  <div class="panel on" id="panel-lv1">
+    <p class="goal">学习目标：知道 DS1302 是干什么的、8 个引脚各接什么、和 51 怎么连。</p>
+    <p>DS1302 就像一块<b>用纽扣电池一直供着电的电子表</b>：单片机断电它也照走，51 通过 3 根线随时去"看表"（读时间）和"对表"（设时间）。</p>
+    <p class="small">👇 点击芯片引脚查看功能（再点一次取消）：</p>
+    <div class="chipwrap">
+      <div class="chip">
+        <div class="notch"></div>
+        <div class="col">
+          <button type="button" class="btn" data-pin="1">1 · VCC1</button>
+          <button type="button" class="btn" data-pin="2">2 · X1</button>
+          <button type="button" class="btn" data-pin="3">3 · X2</button>
+          <button type="button" class="btn" data-pin="4">4 · GND</button>
+        </div>
+        <div class="mid">DS1302</div>
+        <div class="col">
+          <button type="button" class="btn" data-pin="8">8 · VCC2</button>
+          <button type="button" class="btn" data-pin="7">7 · SCLK</button>
+          <button type="button" class="btn" data-pin="6">6 · I/O</button>
+          <button type="button" class="btn" data-pin="5">5 · CE</button>
+        </div>
+      </div>
+    </div>
+    <div class="box" id="pin-detail"><span class="muted">点上方任意引脚，这里显示它的功能。</span></div>
+    <h3>与 51 的接线（本工程）</h3>
+    <div style="overflow-x:auto">
+      <svg viewBox="0 0 660 150" width="660" style="max-width:100%;height:auto;display:block" role="img" aria-label="51 单片机与 DS1302 接线示意图">
+        <rect x="16" y="45" width="140" height="80" rx="8" fill="#fff" stroke="#8a93a3"></rect>
+        <text x="86" y="90" text-anchor="middle">STC89C52</text>
+        <rect x="490" y="30" width="150" height="90" rx="8" fill="#fff" stroke="#8a93a3"></rect>
+        <text x="565" y="80" text-anchor="middle">DS1302</text>
+        <line x1="156" y1="65" x2="490" y2="65" stroke="#2b7de1" stroke-width="2"></line>
+        <text x="316" y="59" fill="#2b7de1">P3.6 → SCLK</text>
+        <line x1="156" y1="90" x2="490" y2="90" stroke="#e8590c" stroke-width="2"></line>
+        <text x="316" y="84" fill="#e8590c">P3.4 → I/O</text>
+        <line x1="156" y1="115" x2="490" y2="115" stroke="#2f9e44" stroke-width="2"></line>
+        <text x="316" y="109" fill="#2f9e44">P3.5 → CE</text>
+      </svg>
+    </div>
+    <p class="small">VCC2 ← 5V 主电 · VCC1 ← 3V 纽扣电池 · X1–X2 之间接 32.768kHz 晶振（无需外部电容）· 与单片机共地</p>
+    <h3>本关要点</h3>
+    <ul>
+      <li><b>三根线</b>：CE（使能，高电平传输）· SCLK（时钟）· I/O（数据）。</li>
+      <li><b>晶振</b>：必须 32.768kHz、负载电容 6pF，内部振荡器<b>不需要</b>外部电阻电容。</li>
+      <li><b>双电源</b>：VCC2 接 5V 主电，VCC1 接 3V 纽扣电池；VCC2 &gt; VCC1+0.2V 时自动用主电，断电自动切电池（维持电流不到 1µA）。</li>
+    </ul>
+  </div>
+
+  <!-- ============ 第 2 关 ============ -->
+  <div class="panel" id="panel-lv2">
+    <p class="goal">学习目标：会"造"命令字节，看懂寄存器表。</p>
+    <p>每次传输都以一个 <b>命令字节</b> 开头（低位先发），它由 4 部分组成：<code>1 · RAM/CK · A4~A0 · 读/写</code>。点击下面的位把它们拨出来：</p>
+    <div class="row" id="bit-row"></div>
+    <div class="row">
+      <button type="button" class="btn" data-preset="0x80">写秒 0x80</button>
+      <button type="button" class="btn" data-preset="0x81">读秒 0x81</button>
+      <button type="button" class="btn" data-preset="0x8E">清写保护 0x8E</button>
+      <button type="button" class="btn" data-preset="0x8F">读 WP 0x8F</button>
+      <button type="button" class="btn" data-preset="0xBF">时钟突发读 0xBF</button>
+    </div>
+    <div class="box">
+      <div>命令字节 = <span class="cmdhex" id="cmd-hex">0x80</span></div>
+      <div id="cmd-desc" style="margin-top:6px"></div>
+    </div>
+    <h3>寄存器速查表（与选中命令字对应的行会高亮）</h3>
+    <div style="overflow-x:auto">
+      <table class="reg" id="reg-table">
+        <thead><tr><th>寄存器</th><th>写命令</th><th>读命令</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr data-w="128" data-r="129"><td>秒</td><td><code>0x80</code></td><td><code>0x81</code></td><td>bit7 = CH 停振位；00–59</td></tr>
+          <tr data-w="130" data-r="131"><td>分</td><td><code>0x82</code></td><td><code>0x83</code></td><td>00–59</td></tr>
+          <tr data-w="132" data-r="133"><td>时</td><td><code>0x84</code></td><td><code>0x85</code></td><td>bit7 = 12/24 制选择；24h 制 00–23</td></tr>
+          <tr data-w="134" data-r="135"><td>日</td><td><code>0x86</code></td><td><code>0x87</code></td><td>01–31</td></tr>
+          <tr data-w="136" data-r="137"><td>月</td><td><code>0x88</code></td><td><code>0x89</code></td><td>01–12</td></tr>
+          <tr data-w="138" data-r="139"><td>星期</td><td><code>0x8A</code></td><td><code>0x8B</code></td><td>1–7，编码自定义</td></tr>
+          <tr data-w="140" data-r="141"><td>年</td><td><code>0x8C</code></td><td><code>0x8D</code></td><td>00–99</td></tr>
+          <tr data-w="142" data-r="143"><td>写保护 WP</td><td><code>0x8E</code></td><td><code>0x8F</code></td><td><b>bit7 = WP，写任何寄存器前必须先清 0</b></td></tr>
+          <tr data-w="190" data-r="191"><td>时钟突发</td><td><code>0xBE</code></td><td><code>0xBF</code></td><td>连续 8 字节（秒→WP），读带快照防撕裂</td></tr>
+          <tr data-w="192" data-r="193"><td>RAM[n]</td><td><code>0xC0+2n</code></td><td><code>0xC1+2n</code></td><td>31 字节掉电不丢，n = 0~30</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>本关要点</h3>
+    <ul>
+      <li>写命令 = <code>0x80 | (地址&lt;&lt;1)</code>，读命令 = 写命令 + 1；RAM 把 bit6 置 1。</li>
+      <li>bit7 必须为 1，否则芯片拒绝一切写入；bit0 = 0 写 / 1 读。</li>
+      <li>时间寄存器里存的全是 <b>BCD 码</b>（47 秒存 0x47）——第 4 关细讲。</li>
+    </ul>
+  </div>
+
+  <!-- ============ 第 3 关 ============ -->
+  <div class="panel" id="panel-lv3">
+    <p class="goal">学习目标：逐拍看懂写/读时序。要点：写看上升沿，读数下降沿；命令阶段停在 SCLK=1。</p>
+    <div class="row">
+      <button type="button" class="btn on" id="wave-mode-w">写时序：写 0x80 ← 0x59</button>
+      <button type="button" class="btn" id="wave-mode-r">读时序：读 0x81 → 0x59</button>
+    </div>
+    <div id="wf-wrap"></div>
+    <div class="row">
+      <button type="button" class="btn" id="wf-prev">◀ 上一步</button>
+      <button type="button" class="btn primary" id="wf-play">▶ 播放</button>
+      <button type="button" class="btn" id="wf-next">下一步 ▶</button>
+      <button type="button" class="btn" id="wf-reset">⟲ 重置</button>
+      <span class="muted" id="wf-step">第 0 / 0 步</span>
+    </div>
+    <div class="ann">
+      <div><span class="badge" id="wf-phase">空闲</span> <span class="txt" id="wf-ann">点击"下一步"开始逐拍分析</span></div>
+      <div class="count" id="wf-counter"></div>
+    </div>
+    <p class="small">波形颜色：<b style="color:#2b7de1">━ 主机驱动 I/O</b> · <b style="color:#e8590c">━ 芯片驱动 I/O</b> · <b style="color:#8a93a3">╌ 高阻</b>。淡色部分是"还没走到的未来"。</p>
+  </div>
+
+  <!-- ============ 第 4 关 ============ -->
+  <div class="panel" id="panel-lv4">
+    <p class="goal">学习目标：亲手踩一遍三大坑，以后一眼认出来。</p>
+
+    <h2>陷阱 ① 写保护 WP —— "写了没反应"</h2>
+    <p>芯片上电时 WP 状态不确定（常见为 1）。WP=1 时<b>除 0x8E 自己以外</b>的所有寄存器拒绝写入，而且<b>读不受影响</b>——软件毫无报错，极具迷惑性。</p>
+    <div class="row">
+      <span class="badge" id="wp-wp">WP = 1</span>
+      <span class="badge" id="wp-sec">秒寄存器 = 0x00</span>
+      <button type="button" class="btn" id="wp-write">写秒 0x80 ← 0x30</button>
+      <button type="button" class="btn" id="wp-unlock">清写保护 0x8E ← 0x00</button>
+      <button type="button" class="btn" id="wp-read">读秒 0x81</button>
+      <button type="button" class="btn" id="wp-reset">⟲ 重置芯片</button>
+    </div>
+    <pre class="plain" id="wp-log"><code>[虚拟芯片已上电] WP=1（模拟常见上电状态）。请先试试直接写秒……</code></pre>
+
+    <h2>陷阱 ② CH 停振位 —— "写进去了但时间不走"</h2>
+    <p>秒寄存器 bit7 是 CH（Clock Halt）：CH=1 振荡器停振、时间冻结（上电状态不确定）。写秒值时 bit7 自然为 0，时钟就走起来了。点下面的按钮试试：</p>
+    <div class="row">
+      <code id="ch-val" style="font-size:18px">00</code>
+      <span class="badge green" id="ch-badge">CH = 0 · 走时中</span>
+      <button type="button" class="btn" id="ch-btn">把 CH 置 1（停振）</button>
+    </div>
+
+    <h2>陷阱 ③ BCD 码 —— "显示的数字莫名变大"</h2>
+    <p>寄存器里存的是 BCD：高 4 位十位、低 4 位个位。拖动滑块看"不做转换会显示什么"：</p>
+    <div class="row">
+      <label for="bcd-range">秒数（十进制）：<b id="bcd-num-label">47</b></label>
+      <input type="range" id="bcd-range" min="0" max="99" value="47" style="width:280px;vertical-align:middle">
+    </div>
+    <table class="reg" style="max-width:560px">
+      <tr>
+        <th>寄存器里实际存的字节</th><th>转换后 LCD 正确显示</th><th>不做转换 LCD 会显示</th>
+      </tr>
+      <tr>
+        <td><span class="cmdhex" id="bcd-hex">0x47</span></td>
+        <td><span class="cmdhex" id="bcd-ok">47</span></td>
+        <td><span class="cmdhex" id="bcd-wrong" style="color:#b02a2a">71</span></td>
+      </tr>
+    </table>
+
+    <h2>附赠陷阱 ④ 读数错位 —— "读回的值像被乘了 2"</h2>
+    <p>把读函数的命令循环写成 <code>SCLK=1; SCLK=0;</code>（先 1 后 0），会在命令最后一位之后<b>多产生一个下降沿</b>：芯片提前吐出 D0，你的读循环却把它当成"上一拍的残留"跳过——读回的 8 位整体错一位。正确写法见第 3 关读时序：命令阶段停在 SCLK=1。</p>
+    <h3>本关要点</h3>
+    <ul>
+      <li>Init 里必须 <code>写 0x8E ← 0x00</code>（WP 拦不住对它自己的写入，所以这条永远成功）。</li>
+      <li>读 0x8F 可当通信自检：正常只能读回 0x00 或 0x80。</li>
+      <li>时间不走查 CH，显示不对查 BCD，数值错位查下降沿数量。</li>
+    </ul>
+  </div>
+
+  <!-- ============ 第 5 关 ============ -->
+  <div class="panel" id="panel-lv5">
+    <p class="goal">学习目标：看懂修正后的参考驱动（3 个★是关键行），并通过过关测验。</p>
+    <h2>参考驱动（对照工程 src/DS1302.C）</h2>
+<pre><code>#include &lt;STC89C5xRC.H&gt;
+
+sbit DS1302_SCLK = P3 ^ 6;
+sbit DS1302_IO   = P3 ^ 4;
+sbit DS1302_CE   = P3 ^ 5;
+
+void DS1302_Init(void)
+{
+    DS1302_CE   = 0;
+    DS1302_SCLK = 0;
+    <span class="khl">DS1302_WriteByte(0x8E, 0x00);   /* ★1 清写保护 WP=0，否则一切写入被忽略 */</span>
+}
+
+void DS1302_WriteByte(unsigned char Command, unsigned char Data)
+{
+    unsigned char i;
+    DS1302_CE = 1;
+    for (i = 0; i &lt; 8; i++) {            /* 命令字节：LSB 先行 */
+        DS1302_IO = Command &amp; (0x01 &lt;&lt; i);  /* 先放数据（上升沿前建立） */
+        DS1302_SCLK = 1;                 /* 上升沿：芯片锁入 */
+        DS1302_SCLK = 0;                 /* 回低，准备下一位 */
+    }
+    for (i = 0; i &lt; 8; i++) {            /* 数据字节：同样 8 个上升沿 */
+        DS1302_IO = Data &amp; (0x01 &lt;&lt; i);
+        DS1302_SCLK = 1;
+        DS1302_SCLK = 0;
+    }
+    DS1302_CE = 0;                       /* SCLK 已为低，安全结束 */
+}
+
+unsigned char DS1302_ReadByte(unsigned char Command)
+{
+    unsigned char i, Data = 0x00;
+    DS1302_CE = 1;
+    for (i = 0; i &lt; 8; i++) {            /* 命令阶段：0→1，结束时 SCLK 停在高 */
+        DS1302_IO = Command &amp; (0x01 &lt;&lt; i);
+        DS1302_SCLK = 0;
+        DS1302_SCLK = 1;
+    }
+    <span class="khl">    DS1302_IO = 1;                       /* ★2 释放总线：准双向口写 1 才能读 */</span>
+    for (i = 0; i &lt; 8; i++) {            /* 读阶段：每个下降沿出一位 */
+        DS1302_SCLK = 1;
+        <span class="khl">        DS1302_SCLK = 0;                 /* ★3 下降沿：芯片输出一位，立刻采样 */</span>
+        if (DS1302_IO) Data |= (0x01 &lt;&lt; i);
+    }
+    DS1302_CE = 0;
+    DS1302_IO = 0;
+    return Data;                         /* 返回 BCD 码，显示前要转换 */
+}</code></pre>
+    <h2>过关测验（6 题，点击选项即时判分）</h2>
+    <div id="quiz"></div>
+    <div class="row">
+      <span class="badge" id="quiz-score">得分 0 / 6</span>
+      <button type="button" class="btn" id="quiz-reset">⟲ 重做</button>
+    </div>
+  </div>
+
+  <div class="footnote">内容依据：Analog Devices《DS1302》数据手册（REV 3/15）· 配套工程 project/src/DS1302.C · 讲义：DS1302使用教程.md</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function $(s) { return document.querySelector(s); }
+  function $all(s) { return document.querySelectorAll(s); }
+  function setTxt(id, s) { var e = document.getElementById(id); if (e) e.textContent = s; }
+  function bitt(v, i) { return (v >> i) & 1; }
+  function pad2(n) { return (n < 16 ? '0' : '') + n.toString(16).toUpperCase(); }
+
+  /* ============ 标签切换（无 JS 时所有章节默认全显示） ============ */
+  var wfDrawn = false;
+  function showPanel(name) {
+    var tabs = $all('#tabs button');
+    for (var i = 0; i < tabs.length; i++) {
+      var on = tabs[i].getAttribute('data-panel') === name;
+      tabs[i].className = on ? 'on' : '';
+      var p = document.getElementById('panel-' + tabs[i].getAttribute('data-panel'));
+      if (p) p.className = on ? 'panel on' : 'panel';
+    }
+    if (name === 'lv3' && !wfDrawn) drawWave();
+  }
+  (function () {
+    var tabs = $all('#tabs button');
+    for (var i = 0; i < tabs.length; i++) {
+      (function (btn) {
+        btn.onclick = function () { showPanel(btn.getAttribute('data-panel')); };
+      })(tabs[i]);
+    }
+    showPanel('lv1');   /* 有 JS 时收起其他章节，只留第 1 关 */
+  })();
+
+  /* ============ 第 1 关：引脚 ============ */
+  var PINS = {
+    1: ['VCC1', '电池备份电源：接 3V 纽扣电池。主电断开时由它维持走时，维持电流仅几百 nA。'],
+    2: ['X1', '晶振输入：接 32.768kHz 表晶（负载电容 6pF）。内部振荡器不需要任何外部电阻电容。'],
+    3: ['X2', '晶振输出：与 X1 之间接同一颗晶振。也可从 X1 输入外部 32.768kHz 时钟，此时 X2 悬空。'],
+    4: ['GND', '地：与单片机共地。'],
+    5: ['CE', '使能（旧手册叫 RST）：拉高启动一次传输，拉低立即结束并让 I/O 变高阻。内部 40kΩ 下拉。本工程接 P3.5。'],
+    6: ['I/O', '双向数据线：命令字节和数据字节都从这根线走，一律低位（LSB）先行。推挽输出，无需外部上拉。本工程接 P3.4。'],
+    7: ['SCLK', '串行时钟：上升沿锁入主机发来的位，下降沿后芯片输出位。上限 2MHz（5V）。本工程接 P3.6。'],
+    8: ['VCC2', '主电源：接系统 5V。当 VCC2 > VCC1 + 0.2V 时由 VCC2 供电，否则自动切到 VCC1 电池。']
+  };
+  var pinSel = 0;
+  (function () {
+    var btns = $all('[data-pin]');
+    for (var i = 0; i < btns.length; i++) {
+      (function (btn) {
+        btn.onclick = function () {
+          var n = Number(btn.getAttribute('data-pin'));
+          pinSel = (pinSel === n ? 0 : n);
+          var d = PINS[n];
+          document.getElementById('pin-detail').innerHTML = pinSel
+            ? '<span class="badge">引脚 ' + n + ' · ' + d[0] + '</span><div style="margin-top:6px">' + d[1] + '</div>'
+            : '<span class="muted">点上方任意引脚，这里显示它的功能。</span>';
+        };
+      })(btns[i]);
+    }
+  })();
+
+  /* ============ 第 2 关：命令字节搭积木 ============ */
+  var cmdByte = 0x80;
+  var REG_NAMES = ['秒', '分', '时', '日', '月', '星期', '年', '写保护 WP'];
+  var bitBtns = [];
+  (function () {
+    var row = document.getElementById('bit-row');
+    for (var i = 7; i >= 0; i--) {
+      (function (bi) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'btn bitbtn';
+        b.onclick = function () { cmdByte ^= (1 << bi); renderCmd(); };
+        row.appendChild(b); bitBtns[bi] = b;
+      })(i);
+    }
+    var presets = $all('[data-preset]');
+    for (var j = 0; j < presets.length; j++) {
+      (function (btn) {
+        btn.onclick = function () { cmdByte = parseInt(btn.getAttribute('data-preset'), 16); renderCmd(); };
+      })(presets[j]);
+    }
+  })();
+  function renderCmd() {
+    for (var i = 7; i >= 0; i--) {
+      var v = bitt(cmdByte, i);
+      bitBtns[i].innerHTML = '<small>bit' + i + '</small>' + v;
+      bitBtns[i].className = v ? 'btn bitbtn on' : 'btn bitbtn';
+    }
+    setTxt('cmd-hex', '0x' + pad2(cmdByte));
+    var rw = cmdByte & 1, ram = (cmdByte >> 6) & 1, addr = (cmdByte >> 1) & 31, msb = (cmdByte >> 7) & 1;
+    var dir = rw ? '读（芯片 → 主机）' : '写（主机 → 芯片）';
+    var html = '';
+    if (!msb) html += '<span style="color:#b02a2a">bit7 = 0：对芯片的一切写操作被禁止！命令字节必须以 1 开头。</span><br>';
+    if (ram) {
+      html += (addr === 31 ? 'RAM 突发模式 · ' : 'RAM[' + addr + '] · ') + dir;
+    } else if (addr === 31) {
+      html += '时钟突发模式 · ' + dir + '（写必须连续 8 字节）';
+    } else if (addr < 8) {
+      html += REG_NAMES[addr] + '寄存器 · ' + dir;
+    } else if (addr === 8) {
+      html += '涓流充电寄存器 · ' + dir + '（没有可充电电池就永远别碰它）';
+    } else {
+      html += '保留地址（无效）';
+    }
+    html += '<br><span class="muted small">拆解：bit7=' + msb + '（必须 1）· bit6=' + ram + (ram ? '（RAM）' : '（时钟）') +
+      ' · 地址 A4~A0=' + addr.toString(2) + ' · bit0=' + rw + (rw ? '（读）' : '（写）') + '</span>';
+    document.getElementById('cmd-desc').innerHTML = html;
+    var rows = $all('#reg-table tbody tr');
+    for (var k = 0; k < rows.length; k++) {
+      var w = Number(rows[k].getAttribute('data-w')), r = Number(rows[k].getAttribute('data-r'));
+      rows[k].className = (w === cmdByte || r === cmdByte) ? 'hl' : '';
+    }
+  }
+  renderCmd();
+
+  /* ============ 第 3 关：波形逐步播放器 ============ */
+  function buildWrite(cmd, data) {
+    var A = [];
+    function P(o) { var d = { ce: 0, sclk: 0, io: 0, src: 'host', sig: '', grp: 'idle', ann: '', bitLab: '' }; for (var k in o) d[k] = o[k]; A.push(d); }
+    P({ ann: '空闲：CE=0、SCLK=0，什么都没发生。' });
+    P({ ce: 1, sig: 'ce', grp: 'ctrl', ann: 'CE 拉高 → 传输开始（此刻 SCLK 为低，满足手册要求）。' });
+    var i;
+    for (i = 0; i < 8; i++) {
+      P({ ce: 1, sclk: 0, io: bitt(cmd, i), sig: 'io', grp: 'cmd', bitLab: 'C' + i, ann: (i ? 'SCLK 已回低：' : '') + '命令位 C' + i + '=' + bitt(cmd, i) + ' 放上 I/O —— 字节一律低位（LSB）先行。' });
+      P({ ce: 1, sclk: 1, io: bitt(cmd, i), sig: 'sclk', grp: 'cmd', ann: '上升沿：芯片锁入命令位 C' + i + '。' });
+    }
+    for (i = 0; i < 8; i++) {
+      P({ ce: 1, sclk: 0, io: bitt(data, i), sig: 'io', grp: 'data', bitLab: 'D' + i, ann: 'SCLK 已回低：数据位 D' + i + '=' + bitt(data, i) + ' 放上 I/O。' });
+      P({ ce: 1, sclk: 1, io: bitt(data, i), sig: 'sclk', grp: 'data', ann: '上升沿：芯片锁入数据位 D' + i + '。' });
+    }
+    P({ ce: 1, sclk: 0, grp: 'end', ann: '第 16 个上升沿结束：SCLK 回到低电平。' });
+    P({ ce: 0, sig: 'ce', grp: 'end', ann: 'CE 拉低：写完成。之后多出来的 SCLK 会被芯片忽略。' });
+    return A;
+  }
+  function buildRead(cmd, data) {
+    var A = [];
+    function P(o) { var d = { ce: 0, sclk: 0, io: 0, src: 'host', sig: '', grp: 'idle', ann: '', bitLab: '' }; for (var k in o) d[k] = o[k]; A.push(d); }
+    P({ ann: '空闲：CE=0、SCLK=0。' });
+    P({ ce: 1, sig: 'ce', grp: 'ctrl', ann: 'CE 拉高 → 读传输开始。' });
+    var i;
+    for (i = 0; i < 8; i++) {
+      P({ ce: 1, sclk: 0, io: bitt(cmd, i), sig: 'io', grp: 'cmd', bitLab: 'C' + i, ann: (i ? 'SCLK 已回低：' : '') + '命令位 C' + i + '=' + bitt(cmd, i) + '（读命令 = 写命令 + 1）。' });
+      P({ ce: 1, sclk: 1, io: bitt(cmd, i), sig: 'sclk', grp: 'cmd', ann: '上升沿：芯片锁入命令位 C' + i + '。' });
+    }
+    P({ ce: 1, sclk: 1, io: 1, src: 'host', sig: 'io', grp: 'ctrl', ann: '★ 关键一步：DS1302_IO = 1 释放总线（51 准双向口先写 1 才能读）。注意此时 SCLK 停在高电平！' });
+    for (i = 0; i < 8; i++) {
+      P({ ce: 1, sclk: 0, src: 'chip', io: bitt(data, i), sig: 'sclk', grp: 'data', bitLab: 'D' + i, ann: (i === 0 ? '↓ 第一个下降沿：芯片输出 D0=' + bitt(data, 0) + '，主机立刻采样。★ 它正好是命令最后一个上升沿之后的第一个下降沿！' : '下降沿：芯片输出 D' + i + '=' + bitt(data, i) + '，主机采样。') });
+      if (i < 7) P({ ce: 1, sclk: 1, src: 'chip', grp: 'data', ann: 'SCLK 拉高：芯片短暂释放 I/O（电平不变），准备下一拍。' });
+      else P({ ce: 1, sclk: 0, src: 'chip', grp: 'data', ann: 'D7 采样完毕：8 个下降沿正好对应 8 个数据位。' });
+    }
+    P({ ce: 0, sig: 'ce', src: 'z', io: 'z', grp: 'end', ann: 'CE 拉低：读完成，I/O 立即变高阻。' });
+    return A;
+  }
+  var MODES = {
+    w: { build: function () { return buildWrite(0x80, 0x59); } },
+    r: { build: function () { return buildRead(0x81, 0x59); } }
+  };
+  var NS = 'http://www.w3.org/2000/svg';
+  var wfWrap = document.getElementById('wf-wrap');
+  var geo = null, waveMode = 'w', cur = 0, timer = null;
+
+  function mkEl(t, attrs, parent) {
+    var e = document.createElementNS(NS, t);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    parent.appendChild(e);
+    return e;
+  }
+  function drawWave() {
+    var A = MODES[waveMode].build();
+    var N = A.length;
+    var avail = Math.max(wfWrap.clientWidth || 640, 320);
+    var labelW = 46, top = 12, rowH = 34, bitH = 18;
+    var colW = Math.max(12, Math.min(30, (avail - labelW - 20) / N));
+    function x(k) { return labelW + 6 + k * colW; }
+    var W = Math.max(avail, x(N) + 10), H = top + 3 * rowH + bitH + 10;
+    geo = { A: A, N: N, colW: colW, x: x, top: top, rowH: rowH };
+    var wfSvg = document.createElementNS(NS, 'svg');
+    wfSvg.setAttribute('class', 'wf-svg');
+    wfSvg.setAttribute('width', W); wfSvg.setAttribute('height', H);
+    wfSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    var defs = mkEl('defs', {}, wfSvg);
+    var clip = mkEl('clipPath', { id: 'wf-clip' }, defs);
+    mkEl('rect', { id: 'wf-cliprect', x: 0, y: 0, width: 0, height: H }, clip);
+    var g = mkEl('g', { id: 'wf-all' }, defs);
+    var r;
+    for (r = 0; r < 3; r++) {
+      mkEl('line', { x1: labelW, y1: top + r * rowH + rowH - 2, x2: x(N), y2: top + r * rowH + rowH - 2, stroke: '#d7dae0', 'stroke-width': 1 }, g);
+    }
+    var sigName = ['CE', 'SCLK', 'I/O'];
+    for (r = 0; r < 3; r++) {
+      var t = mkEl('text', { x: 6, y: top + r * rowH + rowH / 2 + 4 }, g);
+      t.textContent = sigName[r];
+      t.setAttribute('font-weight', 'bold');
+    }
+    function yOf(rr, v) { return v === 'z' ? top + rr * rowH + rowH / 2 : (v ? top + rr * rowH + 5 : top + rr * rowH + rowH - 6); }
+    function stepPath(rr, vals, k0, k1, prev) {
+      var d = '';
+      if (prev !== undefined && vals[k0] !== prev) d += 'M' + x(k0) + ' ' + yOf(rr, prev) + ' L' + x(k0) + ' ' + yOf(rr, vals[k0]) + ' ';
+      for (var k = k0; k <= k1; k++) {
+        var y = yOf(rr, vals[k]);
+        d += (d ? 'L' : 'M') + x(k) + ' ' + y + ' L' + x(k + 1) + ' ' + y + ' ';
+      }
+      return d;
+    }
+    var ceVals = [], scVals = [], ioVals = [];
+    for (r = 0; r < N; r++) { ceVals.push(A[r].ce); scVals.push(A[r].sclk); ioVals.push(A[r].io); }
+    mkEl('path', { d: stepPath(0, ceVals, 0, N - 1), stroke: '#1a1c1f', 'stroke-width': 1.6, fill: 'none' }, g);
+    mkEl('path', { d: stepPath(1, scVals, 0, N - 1), stroke: '#1a1c1f', 'stroke-width': 1.6, fill: 'none' }, g);
+    var k = 0;
+    while (k < N) {
+      var src = A[k].src, k2 = k;
+      while (k2 + 1 < N && A[k2 + 1].src === src) k2++;
+      var d = stepPath(2, ioVals, k, k2, k > 0 ? ioVals[k - 1] : undefined);
+      if (src === 'z') mkEl('path', { d: d, stroke: '#8a93a3', 'stroke-width': 1.4, 'stroke-dasharray': '4 3', fill: 'none' }, g);
+      else mkEl('path', { d: d, stroke: src === 'chip' ? '#e8590c' : '#2b7de1', 'stroke-width': 2, fill: 'none' }, g);
+      k = k2 + 1;
+    }
+    for (r = 0; r < N; r++) {
+      if (!A[r].bitLab) continue;
+      var bt = mkEl('text', { x: x(r) + colW / 2, y: top + 3 * rowH + 14, 'text-anchor': 'middle', 'class': 'bitlab', 'data-bit': A[r].bitLab }, g);
+      bt.textContent = A[r].bitLab;
+    }
+    var u1 = mkEl('use', { href: '#wf-all', 'class': 'ghost' }, wfSvg);
+    u1.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#wf-all');
+    var u2 = mkEl('use', { href: '#wf-all', 'clip-path': 'url(#wf-clip)' }, wfSvg);
+    u2.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#wf-all');
+    mkEl('line', { id: 'wf-guide', x1: 0, y1: top - 4, x2: 0, y2: top + 3 * rowH + 2, stroke: '#2b7de1', 'stroke-width': 1, 'stroke-dasharray': '3 3' }, wfSvg);
+    mkEl('g', { id: 'wf-dots' }, wfSvg);
+    wfWrap.innerHTML = '';
+    wfWrap.appendChild(wfSvg);
+    wfDrawn = true;
+    setStep(cur, true);
+  }
+  function yAbs(r, v) {
+    var top = geo.top, rowH = geo.rowH;
+    return v === 'z' ? top + r * rowH + rowH / 2 : (v ? top + r * rowH + 5 : top + r * rowH + rowH - 6);
+  }
+  function stopPlay() {
+    if (timer) { clearInterval(timer); timer = null; }
+    setTxt('wf-play', '▶ 播放');
+  }
+  function setStep(k, quiet) {
+    if (!geo) return;
+    var A = geo.A, N = geo.N, x = geo.x, colW = geo.colW;
+    cur = Math.max(0, Math.min(N - 1, k));
+    var a = A[cur], xCur = x(cur) + colW;
+    document.getElementById('wf-cliprect').setAttribute('width', xCur);
+    var g = document.getElementById('wf-guide');
+    g.setAttribute('x1', xCur); g.setAttribute('x2', xCur);
+    var dots = document.getElementById('wf-dots');
+    while (dots.firstChild) dots.removeChild(dots.firstChild);
+    if (a.sig === 'ce') mkEl('circle', { cx: xCur, cy: yAbs(0, a.ce), r: 4, fill: '#2b7de1' }, dots);
+    if (a.sig === 'sclk') mkEl('circle', { cx: xCur, cy: yAbs(1, a.sclk), r: 4, fill: '#2b7de1' }, dots);
+    if (a.sig === 'io') mkEl('circle', { cx: xCur, cy: yAbs(2, a.io), r: 4, fill: '#2b7de1' }, dots);
+    var labs = $all('.wf-svg .bitlab');
+    for (var i = 0; i < labs.length; i++) {
+      labs[i].setAttribute('class', labs[i].getAttribute('data-bit') === a.bitLab ? 'bitlab cur' : 'bitlab');
+    }
+    var PH = { idle: '空闲', ctrl: '控制', cmd: '命令字节', data: (waveMode === 'w' ? '数据字节' : '读数据'), end: '结束' };
+    setTxt('wf-phase', PH[a.grp] || a.grp);
+    setTxt('wf-ann', a.ann);
+    setTxt('wf-step', '第 ' + (cur + 1) + ' / ' + N + ' 步');
+    var cnt = '';
+    if (waveMode === 'w') {
+      var c = 0, d2 = 0, i2;
+      for (i2 = 0; i2 <= cur; i2++) { if (A[i2].grp === 'cmd' && A[i2].sig === 'sclk') c++; if (A[i2].grp === 'data' && A[i2].sig === 'sclk') d2++; }
+      cnt = '已锁入：命令 ' + c + '/8 位 · 数据 ' + d2 + '/8 位（写入 0x80 ← 0x59，即把秒设为 59）';
+    } else {
+      var last = -1, i3;
+      for (i3 = 0; i3 <= cur; i3++) if (A[i3].bitLab === 'D' + (last + 1)) last++;
+      if (last >= 0) {
+        var val = 0x59 & ((1 << (last + 1)) - 1);
+        cnt = 'Data = 0x' + pad2(val) + '（已收 D0~D' + last + '，最终应为 0x59）';
+      } else cnt = 'Data = ——（还没采到任何位）';
+    }
+    setTxt('wf-counter', cnt);
+    document.getElementById('wf-prev').disabled = (cur === 0);
+    document.getElementById('wf-next').disabled = (cur === N - 1);
+    if (!quiet && cur === N - 1) stopPlay();
+  }
+  function setWaveMode(m) {
+    waveMode = m; cur = 0;
+    document.getElementById('wave-mode-w').className = (m === 'w') ? 'btn on' : 'btn';
+    document.getElementById('wave-mode-r').className = (m === 'r') ? 'btn on' : 'btn';
+    stopPlay(); drawWave();
+  }
+  document.getElementById('wf-next').onclick = function () { stopPlay(); setStep(cur + 1); };
+  document.getElementById('wf-prev').onclick = function () { stopPlay(); setStep(cur - 1); };
+  document.getElementById('wf-reset').onclick = function () { stopPlay(); setStep(0); };
+  document.getElementById('wf-play').onclick = function () {
+    if (timer) { stopPlay(); return; }
+    if (geo && cur >= geo.N - 1) setStep(0);
+    setTxt('wf-play', '⏸ 暂停');
+    timer = setInterval(function () {
+      if (!geo || cur >= geo.N - 1) { stopPlay(); return; }
+      setStep(cur + 1);
+    }, 520);
+  };
+  document.getElementById('wave-mode-w').onclick = function () { setWaveMode('w'); };
+  document.getElementById('wave-mode-r').onclick = function () { setWaveMode('r'); };
+  window.onresize = function () { if (wfDrawn) drawWave(); };
+
+  /* ============ 第 4 关：WP 虚拟芯片 ============ */
+  var chip = { wp: 1, sec: 0x00 };
+  function wpPrint(s) {
+    var code = document.querySelector('#wp-log code');
+    code.textContent += '\n' + s;
+    document.getElementById('wp-log').scrollTop = 100000;
+  }
+  function wpRender() {
+    setTxt('wp-wp', 'WP = ' + chip.wp);
+    setTxt('wp-sec', '秒寄存器 = 0x' + pad2(chip.sec));
+  }
+  function vWrite(cmd, val, name) {
+    if (cmd === 0x8E) { chip.wp = (val >> 7) & 1; wpPrint('✓ 写 0x8E ← 0x' + pad2(val) + ' 成功：WP 寄存器自己永远可写 → WP=' + chip.wp); }
+    else if (chip.wp) { wpPrint('✗ 写 ' + name + ' 被芯片忽略（WP=1）——没有报错、读回的还是旧值，软件完全看不出来！'); }
+    else { if (cmd === 0x80) chip.sec = val; wpPrint('✓ 写 ' + name + ' ← 0x' + pad2(val) + ' 成功。'); }
+    wpRender();
+  }
+  document.getElementById('wp-write').onclick = function () { vWrite(0x80, 0x30, '0x80（秒）'); };
+  document.getElementById('wp-unlock').onclick = function () { vWrite(0x8E, 0x00, 'WP'); };
+  document.getElementById('wp-read').onclick = function () { wpPrint('→ 读 0x81 返回 0x' + pad2(chip.sec) + '（WP 只挡写，不挡读）。'); };
+  document.getElementById('wp-reset').onclick = function () {
+    chip.wp = 1; chip.sec = 0x00;
+    document.querySelector('#wp-log code').textContent = '[虚拟芯片已重新上电] WP=1（上电状态不确定，这里模拟常见情况）。';
+    wpRender();
+  };
+  wpRender();
+
+  /* CH 停振演示 */
+  var chHalt = false, chSec = 55;
+  setInterval(function () {
+    if (!chHalt) { chSec = (chSec + 1) % 60; setTxt('ch-val', (chSec < 10 ? '0' : '') + chSec); }
+  }, 800);
+  document.getElementById('ch-btn').onclick = function () {
+    chHalt = !chHalt;
+    this.innerHTML = chHalt ? '把 CH 清 0（重新走时）' : '把 CH 置 1（停振）';
+    var b = document.getElementById('ch-badge');
+    b.innerHTML = chHalt ? 'CH = 1 · 已停振，时间冻结（电流 &lt;100nA）' : 'CH = 0 · 走时中';
+    b.className = chHalt ? 'badge red' : 'badge green';
+  };
+
+  /* BCD 转换演示 */
+  function bcdUpdate() {
+    var v = Number(document.getElementById('bcd-range').value);
+    var bcd = ((v / 10) << 4) | (v % 10);
+    setTxt('bcd-num-label', v);
+    setTxt('bcd-hex', '0x' + pad2(bcd));
+    setTxt('bcd-ok', v);
+    setTxt('bcd-wrong', parseInt(bcd.toString(16), 16));
+  }
+  document.getElementById('bcd-range').oninput = bcdUpdate;
+  document.getElementById('bcd-range').onchange = bcdUpdate;   /* 老内核 range 只发 change */
+  bcdUpdate();
+
+  /* ============ 第 5 关：测验 ============ */
+  var QUIZ = [
+    { q: '往秒寄存器写数据之前，程序必须先做哪件事？', opts: ['先写 0x8E ← 0x00 清除写保护', '先读一次秒寄存器', '先把 CH 置 1', '等待 1 秒'], a: 0, exp: 'WP 上电状态不确定，不清就写，芯片会静默忽略；而 0x8E 自己永远可写，所以这条命令总能成功。' },
+    { q: 'DS1302 传输一个字节时，位的顺序是？', opts: ['最高位（MSB）在前', '最低位（LSB）在前', '无所谓，都能识别', '先发 4 位再发 4 位'], a: 1, exp: '手册规定命令和数据都从 bit0 开始移位——和常见 SPI 器件相反，最易写错。' },
+    { q: '读时序中，第一个数据位 D0 出现在？', opts: ['命令字节第一个上升沿', 'CE 拉低之后', '命令最后一个上升沿之后的第一个下降沿', '任意时刻'], a: 2, exp: '手册 DATA OUTPUT 原文。所以命令阶段必须停在 SCLK=1，否则下降沿数量错位、读回值整体错一位。' },
+    { q: '秒数 47 写进 DS1302 后，寄存器里的字节是？', opts: ['0x2F', '47（十进制直接存）', '0x74', '0x47'], a: 3, exp: '时间寄存器是 BCD 码：十位 4 占高 4 位，个位 7 占低 4 位 → 0100 0111 = 0x47。' },
+    { q: '写入都成功，但 LCD 上时间一直不走，最可能的原因是？', opts: ['写保护没清', '秒寄存器 bit7（CH）=1，时钟停振', 'BCD 没转换', 'I/O 没释放'], a: 1, exp: 'CH=1 时振荡器停振（上电状态不确定）。写秒值时 bit7 自然为 0，时钟就走起来。' },
+    { q: 'WP=1 时，下面哪个寄存器仍然可以写入？', opts: ['秒寄存器 0x80', 'RAM 0xC0', '写保护寄存器 0x8E 自己', '一个都不能写'], a: 2, exp: '手册写明 WP 阻止对"任何其他寄存器"的写操作——对 0x8E 自身的写入放行，这正是"解锁"能生效的原理。' }
+  ];
+  var score = 0;
+  function renderQuiz() {
+    score = 0;
+    setTxt('quiz-score', '得分 0 / ' + QUIZ.length);
+    var box = document.getElementById('quiz');
+    box.innerHTML = '';
+    for (var qi = 0; qi < QUIZ.length; qi++) {
+      (function (item, qIndex) {
+        var div = document.createElement('div');
+        div.className = 'q';
+        var t = document.createElement('div');
+        t.className = 'q-t';
+        t.innerHTML = (qIndex + 1) + '. ' + item.q;
+        div.appendChild(t);
+        var done = false;
+        for (var oi = 0; oi < item.opts.length; oi++) {
+          (function (oIndex) {
+            var b = document.createElement('button');
+            b.type = 'button'; b.className = 'btn';
+            b.innerHTML = String.fromCharCode(65 + oIndex) + '. ' + item.opts[oIndex];
+            b.onclick = function () {
+              if (done) return;
+              done = true;
+              var btns = div.getElementsByTagName('button');
+              for (var i = 0; i < btns.length; i++) {
+                btns[i].disabled = true;
+                if (i === item.a) btns[i].className = 'btn correct';
+              }
+              var ok = (oIndex === item.a);
+              if (ok) { score++; }
+              else b.className = 'btn wrong';
+              var exp = document.createElement('p');
+              exp.className = 'exp';
+              exp.style.color = ok ? '#20713a' : '#67707d';
+              exp.innerHTML = (ok ? '✓ 答对了！' : '✗ 再想想~ ') + item.exp;
+              div.appendChild(exp);
+              var tail = (qIndex === QUIZ.length - 1 && score === QUIZ.length) ? ' 🎉 满分通关！' : '';
+              setTxt('quiz-score', '得分 ' + score + ' / ' + QUIZ.length + tail);
+            };
+            div.appendChild(b);
+          })(oi);
+        }
+        box.appendChild(div);
+      })(QUIZ[qi], qi);
+    }
+  }
+  document.getElementById('quiz-reset').onclick = renderQuiz;
+  renderQuiz();
+})();
+</script>
+</body>
+</html>
