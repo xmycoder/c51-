@@ -132,6 +132,7 @@
 // }
 
 #include <STC89C5xRC.H>
+#include "Com_util.h"
 
 // //数码管段码表
 unsigned char NixieTable[] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};
@@ -156,8 +157,12 @@ void fun(int a, int b)
 
 void main()
 {
-    fun(3, 7);
+
     while (1)
     {
+        fun(1, 6);
+        Delayms(50);
+        fun(2, 2);
+        Delayms(50);
     }
 }
